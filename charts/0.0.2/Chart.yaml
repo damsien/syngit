@@ -5,7 +5,7 @@ type: application
 version: 0.0.2
 appVersion: 0.0.2
 home: https://github.com/syngit-org/syngit
-icon: https://github.com/syngit-org/syngit/blob/main/img/icon.png?raw=true
+icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
 maintainers:
   - email: dassieu.damien@gmail.com
     name: Damien
