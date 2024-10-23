@@ -2,6 +2,8 @@ name: Release charts
 
 on:
   push:
+    branches:
+      - dev
     tags:
       - '*'
 
@@ -28,9 +30,20 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
+      - name: Determine release name
+        id: release_name
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+            echo "tag=dev-${COMMIT_HASH}" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=" >> $GITHUB_ENV
+          fi
+          
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         with:
           charts_dir: charts
+          config: charts/release_config.yml
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
