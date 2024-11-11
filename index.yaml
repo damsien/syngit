@@ -32,6 +32,21 @@ entries:
     - https://github.com/damsien/syngit/releases/download/1.0.0/syngit-1.0.0.tgz
     version: 1.0.0
   - apiVersion: v2
+    appVersion: 0.2.0
+    created: "2024-11-11T21:27:50.352362336Z"
+    description: An operator to push resources onto git
+    digest: a1c35f04d20fbf860b7416f26c3c82769d833445d4b40179fef2a84d9c08d195
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/0.2.0/syngit-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 0.1.0
     created: "2024-11-11T21:00:26.155412888Z"
     description: An operator to push resources onto git
@@ -117,4 +132,4 @@ entries:
     urls:
     - https://github.com/damsien/syngit/releases/download/syngit-0.0.1/syngit-0.0.1.tgz
     version: 0.0.1
-generated: "2024-11-11T21:00:26.155443825Z"
+generated: "2024-11-11T21:27:50.352423901Z"
