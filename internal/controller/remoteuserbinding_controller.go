@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	syngit "github.com/syngit-org/syngit/api/v1beta2"
+	syngit "github.com/syngit-org/syngit/api/v1beta3"
 )
 
 // RemoteUserBindingReconciler reconciles a RemoteUserBinding object
@@ -54,23 +55,27 @@ func (r *RemoteUserBindingReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		// does not exists -> deleted
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	rUBNamespace := remoteUserBinding.Namespace
-	rUBName := remoteUserBinding.Name
 	subject := remoteUserBinding.Spec.Subject
 
-	var prefixMsg = "[" + rUBNamespace + "/" + rUBName + "]"
-	log.Log.Info(prefixMsg + " Reconciling request received")
+	log.Log.Info("Reconcile request",
+		"resource", "remoteuserbinding",
+		"namespace", remoteUserBinding.Namespace,
+		"name", remoteUserBinding.Name,
+	)
+
+	condition := &v1.Condition{
+		LastTransitionTime: v1.Now(),
+		Type:               "RemoteUsersBound",
+	}
 
 	// Get the referenced RemoteUsers
-	var isGloballyBound bool = false
-	var isGloballyNotBound bool = false
+	var isGloballyBound bool = true
 
 	gitUserHosts := []syngit.GitUserHost{}
-	for _, remoteUserRef := range remoteUserBinding.Spec.RemoteRefs {
+	for _, remoteUserRef := range remoteUserBinding.Spec.RemoteUserRefs {
 
 		// Set already known values about this RemoteUser
 		var gitUserHost syngit.GitUserHost = syngit.GitUserHost{}
-		gitUserHost.State = syngit.NotBound
 		gitUserHost.RemoteUserUsed = remoteUserRef.Name
 
 		var remoteUser syngit.RemoteUser
@@ -78,14 +83,14 @@ func (r *RemoteUserBindingReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 		// Get the concerned RemoteUser
 		if err := r.Get(ctx, retrievedRemoteUser, &remoteUser); err != nil {
+			gitUserHost.State = syngit.NotBound
 			r.Recorder.Event(&remoteUserBinding, "Warning", "NotBound", gitUserHost.RemoteUserUsed+" not bound")
-			isGloballyNotBound = true
+			isGloballyBound = false
 		} else {
 			gitUserHost.GitFQDN = remoteUser.Spec.GitBaseDomainFQDN
 			gitUserHost.SecretRef = remoteUser.Spec.SecretRef
 			gitUserHost.State = syngit.Bound
 			r.Recorder.Event(&remoteUserBinding, "Normal", "Bound", gitUserHost.RemoteUserUsed+" bound")
-			isGloballyBound = true
 		}
 
 		gitUserHosts = append(gitUserHosts, gitUserHost)
@@ -93,26 +98,39 @@ func (r *RemoteUserBindingReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 	remoteUserBinding.Status.GitUserHosts = gitUserHosts
 
-	if isGloballyBound && isGloballyNotBound {
-		remoteUserBinding.Status.GlobalState = syngit.PartiallyBound
-		r.Recorder.Event(&remoteUserBinding, "Warning", "PartiallyBound", "Some of the git repos are not bound")
+	if !isGloballyBound {
+		remoteUserBinding.Status.State = syngit.PartiallyBound
+		const partiallyBoundMessage = "Some of the remote users are not bound"
+		r.Recorder.Event(&remoteUserBinding, "Warning", "PartiallyBound", partiallyBoundMessage)
+
+		condition.Status = v1.ConditionFalse
+		condition.Reason = string(syngit.PartiallyBound)
+		condition.Message = partiallyBoundMessage
 	} else {
-		if isGloballyBound {
-			remoteUserBinding.Status.GlobalState = syngit.Bound
-			r.Recorder.Event(&remoteUserBinding, "Normal", "Bound", "Every git repos are bound")
-		} else {
-			remoteUserBinding.Status.GlobalState = syngit.NotBound
-			r.Recorder.Event(&remoteUserBinding, "Warning", "NotBound", "None of the git repos are bound")
-		}
+		remoteUserBinding.Status.State = syngit.AllBound
+		const boundMessage = "Every remote users are bound"
+		r.Recorder.Event(&remoteUserBinding, "Normal", "Bound", boundMessage)
+
+		condition.Status = v1.ConditionTrue
+		condition.Reason = string(syngit.AllBound)
+		condition.Message = boundMessage
 	}
 
 	remoteUserBinding.Status.UserKubernetesID = subject.Name
 
-	if err := r.Status().Update(ctx, &remoteUserBinding); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
+	_ = r.updateStatus(ctx, &remoteUserBinding, *condition)
 
 	return ctrl.Result{}, nil
+}
+
+func (r *RemoteUserBindingReconciler) updateStatus(ctx context.Context, remoteUserBinding *syngit.RemoteUserBinding, condition v1.Condition) error {
+	conditions := typeBasedConditionUpdater(remoteUserBinding.Status.DeepCopy().Conditions, condition)
+
+	remoteUserBinding.Status.Conditions = conditions
+	if err := r.Status().Update(ctx, remoteUserBinding); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *RemoteUserBindingReconciler) findObjectsForRemoteUser(ctx context.Context, remoteUser client.Object) []reconcile.Request {
@@ -149,10 +167,10 @@ func (r *RemoteUserBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		remoteUserRefsName := []string{}
 
 		remoteUserBinding := rawObj.(*syngit.RemoteUserBinding)
-		if len(remoteUserBinding.Spec.RemoteRefs) == 0 {
+		if len(remoteUserBinding.Spec.RemoteUserRefs) == 0 {
 			return nil
 		}
-		for _, remoteUserRef := range remoteUserBinding.Spec.RemoteRefs {
+		for _, remoteUserRef := range remoteUserBinding.Spec.RemoteUserRefs {
 			if remoteUserRef.Name == "" {
 				return nil
 			}
