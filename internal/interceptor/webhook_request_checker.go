@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	syngit "github.com/syngit-org/syngit/pkg/api/v1beta2"
+	syngit "github.com/syngit-org/syngit/pkg/api/v1beta3"
 	"github.com/syngit-org/syngit/pkg/utils"
 	"gopkg.in/yaml.v3"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -289,7 +289,7 @@ func (wrc *WebhookRequestChecker) searchForGitTokenFromRemoteUserBinding(rub syn
 	var gitUser *gitUser
 
 	namespace := wrc.remoteSyncer.Namespace
-	for _, ref := range rub.Spec.RemoteRefs {
+	for _, ref := range rub.Spec.RemoteUserRefs {
 		namespacedName := &types.NamespacedName{
 			Namespace: namespace,
 			Name:      ref.Name,

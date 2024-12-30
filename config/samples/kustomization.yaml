@@ -9,4 +9,7 @@ resources:
 - syngit_v1beta2_remotesyncer.yaml
 - syngit_v1beta2_remoteuserbinding.yaml
 - syngit_v1beta2_remoteuser.yaml
+- syngit_v1beta3_remoteuser.yaml
+- syngit_v1beta3_remoteuserbinding.yaml
+- syngit_v1beta3_remotesyncer.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	webhooksyngitv1beta2 "github.com/syngit-org/syngit/internal/webhook/v1beta2"
-	syngit "github.com/syngit-org/syngit/pkg/api/v1beta2"
+	syngit "github.com/syngit-org/syngit/pkg/api/v1beta3"
 	//+kubebuilder:scaffold:imports
 )
 

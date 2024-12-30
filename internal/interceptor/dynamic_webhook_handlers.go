@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
-	syngit "github.com/syngit-org/syngit/pkg/api/v1beta2"
+	syngit "github.com/syngit-org/syngit/pkg/api/v1beta3"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/types"
