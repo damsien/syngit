@@ -47,7 +47,6 @@ var _ = Describe("05 Use a default user", func() {
 		err := syngit.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
 
-		Wait5()
 		By("only creating the RemoteUser for Luffy")
 		luffySecretName := string(Luffy) + "-creds"
 		remoteUserLuffy := &syngit.RemoteUser{
@@ -68,7 +67,6 @@ var _ = Describe("05 Use a default user", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("only creating the RemoteUser for Chopper")
 		chopperSecretName := string(Chopper) + "-creds"
 		remoteUserChopper := &syngit.RemoteUser{
@@ -89,7 +87,6 @@ var _ = Describe("05 Use a default user", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		repoUrl := "http://" + gitP1Fqdn + "/syngituser/green.git"
 		By("creating the RemoteSyncer")
 		remotesyncer := &syngit.RemoteSyncer{
@@ -128,7 +125,6 @@ var _ = Describe("05 Use a default user", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("creating a test configmap that fails (Chopper does not have access to green)")
 		cm := &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -153,7 +149,6 @@ var _ = Describe("05 Use a default user", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("creating a test configmap that succeed (pushed as Luffy)")
 		Eventually(func() bool {
 			_, err = sClient.KAs(Sanji).CoreV1().ConfigMaps(namespace).Create(ctx,

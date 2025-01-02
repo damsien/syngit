@@ -62,6 +62,8 @@ cleanup-gitea:
 WEBHOOK_PATH ?= config/webhook
 .PHONY: deploy-all
 deploy-all: # Launch dev env on the cluster
+	make docker-build
+	make kind-load-image
 	make cleanup-e2e || true
 	kind create cluster --name $(DEV_CLUSTER) 2>/dev/null || true
 	make docker-build IMG=$(IMG)
@@ -89,7 +91,7 @@ chart-uninstall:
 
 .PHONY: undeploy-all
 undeploy-all: # Cleanup
-	cd $(WEBHOOK_PATH) && ./cleanup-injector.sh
+	cd $(WEBHOOK_PATH) && ./cleanup-injector.sh .
 	make undeploy
 
 .PHONY: manifests
@@ -110,9 +112,9 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	cd $(WEBHOOK_PATH) && ./cert-injector.sh manifests.yaml ../crd/patches 1 >/dev/null
+	cd $(WEBHOOK_PATH) && ./cert-injector.sh . 1 >/dev/null
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
-	cd $(WEBHOOK_PATH) && ./cleanup-injector.sh
+	cd $(WEBHOOK_PATH) && ./cleanup-injector.sh .
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
@@ -122,13 +124,14 @@ test-e2e:
 	go test ./test/e2e/build -v -ginkgo.v
 	go test ./test/e2e/syngit -v -ginkgo.v
 
+COVERPKG = $(shell go list ./... | grep -v 'test' | grep -v -E 'v1alpha|v1beta1' | paste -sd "," -)
 .PHONY: fast-e2e
 fast-e2e:
-	kind create cluster --name $(DEV_CLUSTER) 2>/dev/null || true
-	make undeploy-all || true
-	make docker-build
-	make kind-load-image
-	go test ./test/e2e/syngit -v -ginkgo.v -setup fast
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./test/e2e/syngit -v -ginkgo.v -cover -coverpkg=$(COVERPKG) -setup fast
+# kind create cluster --name $(DEV_CLUSTER) 2>/dev/null || true
+# make undeploy-all || true
+# make docker-build
+# make kind-load-image
 
 .PHONY: cleanup-e2e
 cleanup-e2e:
@@ -208,14 +211,22 @@ endif
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
+.PHONY: install-webhooks
+install-webhooks: manifests kustomize ## Deploy webhooks into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/webhook | $(KUBECTL) apply -f -
+
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: uninstall-webhooks
+uninstall-webhooks: manifests kustomize ## Undeploy webhooks into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/webhook | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	cd $(WEBHOOK_PATH) && ./cert-injector.sh manifests.yaml ../crd/patches
+	cd $(WEBHOOK_PATH) && ./cert-injector.sh .
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 
 .PHONY: undeploy

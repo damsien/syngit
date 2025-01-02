@@ -41,7 +41,6 @@ var _ = Describe("01 Create RemoteUser", func() {
 		err := syngit.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
 
-		Wait5()
 		By("creating the RemoteUser for Luffy")
 		luffySecretName := string(Luffy) + "-creds"
 		remoteUserLuffy := &syngit.RemoteUser{
@@ -82,7 +81,6 @@ var _ = Describe("01 Create RemoteUser", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("creating the RemoteUser for Sanji (without RemoteUserBinding)")
 		sanjiSecretName := string(Sanji) + "-creds"
 		remoteUserSanji := &syngit.RemoteUser{
@@ -116,7 +114,6 @@ var _ = Describe("01 Create RemoteUser", func() {
 		}
 		rubSanji := &syngit.RemoteUserBinding{}
 
-		Wait10()
 		errRub := sClient.As(Sanji).Get(nnRubSanji, rubSanji)
 		Expect(errRub).To(HaveOccurred())
 		Expect(errRub.Error()).To(ContainSubstring("not found"))

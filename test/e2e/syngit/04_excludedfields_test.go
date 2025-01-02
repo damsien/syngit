@@ -46,7 +46,6 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		err := syngit.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
 
-		Wait5()
 		By("creating the RemoteUser & RemoteUserBinding for Luffy")
 		luffySecretName := string(Luffy) + "-creds"
 		remoteUserLuffy := &syngit.RemoteUser{
@@ -70,7 +69,6 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		repoUrl := "http://" + gitP1Fqdn + "/syngituser/blue.git"
 		By("creating the RemoteSyncer")
 		remotesyncer := &syngit.RemoteSyncer{
@@ -111,7 +109,6 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("creating a test configmap")
 		const (
 			annotation1Key = "test-annotation1"
@@ -214,7 +211,6 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		)
 		Expect(err).ToNot(HaveOccurred())
 
-		Wait5()
 		repoUrl := "http://" + gitP1Fqdn + "/syngituser/blue.git"
 		By("creating the RemoteSyncer")
 		remotesyncer := &syngit.RemoteSyncer{
@@ -253,7 +249,6 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		Wait5()
 		By("creating a test configmap")
 		const annotation1Key = "test-annotation1"
 		const annotation2Key = "test-annotation2"

@@ -18,10 +18,14 @@ package e2e_syngit
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -29,14 +33,22 @@ import (
 	"github.com/joho/godotenv"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	controllerssyngit "github.com/syngit-org/syngit/internal/controller"
+	webhooksyngitv1beta2 "github.com/syngit-org/syngit/internal/webhook/v1beta2"
 	"github.com/syngit-org/syngit/test/utils"
 	. "github.com/syngit-org/syngit/test/utils"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta2"
 )
@@ -93,18 +105,137 @@ func installationSetup() {
 	_, err := Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	By("installing the cert-manager")
-	Expect(InstallCertManager()).To(Succeed())
+	// By("installing the cert-manager")
+	// Expect(InstallCertManager()).To(Succeed())
 
-	By("loading the the manager(Operator) image on Kind")
-	err = utils.LoadImageToKindClusterWithName(projectimage)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	// By("loading the the manager(Operator) image on Kind")
+	// err = utils.LoadImageToKindClusterWithName(projectimage)
+	// ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+}
+
+func createCertificates() {
+	By("creating the certificates for the dynamic webhook")
+	cmd = exec.Command("./config/webhook/gen-certs-serv-cli.sh")
+	_, errCmd := Run(cmd)
+	ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+}
+
+var k8sManager ctrl.Manager
+var cfg *rest.Config
+var testEnv *envtest.Environment
+
+func setupManager() {
+
+	os.Setenv("MANAGER_NAMESPACE", "syngit")
+	os.Setenv("DYNAMIC_WEBHOOK_NAME", "remotesyncer.syngit.io")
+	os.Setenv("DEV", "true")
+
+	By("bootstrapping test environment")
+	testEnv = &envtest.Environment{
+		WebhookInstallOptions: envtest.WebhookInstallOptions{
+			Paths: []string{filepath.Join(".", "config", "webhook", "manifests.yaml")},
+		},
+		CRDDirectoryPaths: []string{filepath.Join(".", "config", "crd", "bases")},
+
+		// The BinaryAssetsDirectory is only required if you want to run the tests directly
+		// without call the makefile target test. If not informed it will look for the
+		// default path defined in controller-runtime which is /usr/local/kubebuilder/.
+		// Note that you must have the required binaries setup under the bin directory to perform
+		// the tests directly. When we run make test it will be setup and used automatically.
+		BinaryAssetsDirectory: filepath.Join(".", "bin", "k8s",
+			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
+	}
+
+	// cfg is defined in this file globally.
+	var errTest error
+	cfg, errTest = testEnv.Start()
+	Expect(errTest).NotTo(HaveOccurred())
+	Expect(cfg).NotTo(BeNil())
+
+	errScheme := syngit.AddToScheme(scheme.Scheme)
+	Expect(errScheme).NotTo(HaveOccurred())
+
+	By("creating the manager")
+	webhookInstallOptions := &testEnv.WebhookInstallOptions
+	var errK8sManager error
+	k8sManager, errK8sManager = ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    webhookInstallOptions.LocalServingHost,
+			Port:    webhookInstallOptions.LocalServingPort,
+			CertDir: webhookInstallOptions.LocalServingCertDir,
+		}),
+		LeaderElection: false,
+	})
+	Expect(errK8sManager).ToNot(HaveOccurred())
+
+	errWebhook := webhooksyngitv1beta2.SetupRemoteUserWebhookWithManager(k8sManager)
+	Expect(errWebhook).NotTo(HaveOccurred())
+	errWebhook = webhooksyngitv1beta2.SetupRemoteSyncerWebhookWithManager(k8sManager)
+	Expect(errWebhook).NotTo(HaveOccurred())
+	errWebhook = webhooksyngitv1beta2.SetupRemoteUserBindingWebhookWithManager(k8sManager)
+	Expect(errWebhook).NotTo(HaveOccurred())
+
+	By("registring webhook server")
+	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remoteuser-association", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserAssociationWebhookHandler{
+		Client:  k8sManager.GetClient(),
+		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
+	}})
+	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remoteuser-permissions", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserPermissionsWebhookHandler{
+		Client:  k8sManager.GetClient(),
+		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
+	}})
+	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remoteuserbinding-permissions", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserBindingPermissionsWebhookHandler{
+		Client:  k8sManager.GetClient(),
+		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
+	}})
+	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remotesyncer-rules-permissions", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteSyncerWebhookHandler{
+		Client:  k8sManager.GetClient(),
+		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
+	}})
+
+	By("setting up the controllers")
+	errController := (&controllerssyngit.RemoteUserReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(errController).ToNot(HaveOccurred())
+	errController = (&controllerssyngit.RemoteUserBindingReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(errController).ToNot(HaveOccurred())
+	errController = (&controllerssyngit.RemoteSyncerReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(errController).ToNot(HaveOccurred())
+
+	By("starting the manager")
+	go func() {
+		defer GinkgoRecover()
+		err := k8sManager.Start(ctrl.SetupSignalHandler())
+		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
+	}()
+
+	// wait for the webhook server to get ready.
+	dialer := &net.Dialer{Timeout: time.Second}
+	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
+	Eventually(func() error {
+		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
+		if err != nil {
+			return err
+		}
+
+		return conn.Close()
+	}).Should(Succeed())
 }
 
 func rbacSetup(ctx context.Context) {
 	By("setting the default client successfully")
 	sClient = &SyngitTestUsersClientset{}
-	err := sClient.Initialize()
+	err := sClient.Initialize(cfg)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	By("creating users with RBAC cluster-admin for global users")
@@ -285,15 +416,25 @@ var _ = BeforeSuite(func() {
 		installationSetup()
 	}
 
-	By("installing prometheus operator")
-	Expect(InstallPrometheusOperator()).To(Succeed())
-
-	By("installing the syngit chart")
-	cmd = exec.Command("make", "chart-install")
-	_, errChartSyngit := Run(cmd)
-	ExpectWithOffset(1, errChartSyngit).NotTo(HaveOccurred())
-
+	createCertificates()
+	setupManager()
 	rbacSetup(ctx)
+
+	// By("creating the syngit namespace")
+	// _, errCmd := sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
+	// 	&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+	// 	metav1.CreateOptions{},
+	// )
+	// Expect(errCmd).NotTo(HaveOccurred())
+
+	// By("installing webhooks")
+	// cmd = exec.Command("make", "install-webhooks")
+	// _, errCmd = Run(cmd)
+	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+
+	// By("installing prometheus operator")
+	// Expect(InstallPrometheusOperator()).To(Succeed())
+
 	namespaceSetup(ctx)
 
 	By("retrieving the gitea urls")
@@ -312,21 +453,13 @@ func uninstallSetup() {
 	_, err := Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	By("uninstalling the cert-manager bundle")
-	UninstallCertManager()
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	By("deleting the manager namespace")
-	cmd = exec.Command("kubectl", "delete", "ns", operatorNamespace)
-	_, err = Run(cmd)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
 func deleteNamespace(ctx context.Context) {
 
-	By("deleting the test namespace")
-	err := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{GracePeriodSeconds: func() *int64 { i := int64(0); return &i }()})
-	Expect(err).NotTo(HaveOccurred())
+	// By("deleting the test namespace")
+	// err := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{GracePeriodSeconds: func() *int64 { i := int64(0); return &i }()})
+	// Expect(err).NotTo(HaveOccurred())
 }
 
 func deleteRbac(ctx context.Context) {
@@ -345,19 +478,59 @@ func deleteRbac(ctx context.Context) {
 var _ = AfterSuite(func() {
 	ctx := context.TODO()
 
-	By("uninstalling the syngit chart")
-	cmd = exec.Command("make", "chart-uninstall")
-	_, err := Run(cmd)
-	Expect(err).NotTo(HaveOccurred())
+	deleteRbac(ctx)
+
+	// By("deleting the syngit namespace")
+	// errCmd := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, operatorNamespace,
+	// 	metav1.DeleteOptions{},
+	// )
+	// Expect(errCmd).NotTo(HaveOccurred())
+
+	// By("deleting the webhooks")
+	// errCmd := sClient.KAs(Admin).AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, "validating-webhook-configuration",
+	// 	metav1.DeleteOptions{},
+	// )
+	// Expect(errCmd).NotTo(HaveOccurred())
+
+	By("tearing down the test environment")
+	Eventually(func() bool {
+		errTestEnv := testEnv.Stop()
+		return errTestEnv == nil
+	}, timeout, interval).Should(BeTrue())
+
+	// By("uninstalling webhooks")
+	// cmd = exec.Command("make", "uninstall-webhooks")
+	// _, errCmd = Run(cmd)
+	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+
+	// By("setting up the global client")
+	// kubeconfig := os.Getenv("KUBECONFIG")
+	// if kubeconfig == "" {
+	// 	if home := homedir.HomeDir(); home != "" {
+	// 		kubeconfig = fmt.Sprintf("%s/.kube/config", home)
+	// 	}
+	// }
+
+	// config, errConfig := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	// ExpectWithOffset(1, errConfig).NotTo(HaveOccurred())
+
+	// sClient = &SyngitTestUsersClientset{}
+	// errClient := sClient.Initialize(config)
+	// ExpectWithOffset(1, errClient).NotTo(HaveOccurred())
+
+	By("cleaning up the certificates")
+	cmd = exec.Command("rm", "-rf", "/tmp/k8s-webhook-server/serving-certs/")
+	_, errCmd := Run(cmd)
+	ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+
+	// By("uninstalling the Prometheus manager bundle")
+	// UninstallPrometheusOperator()
 
 	if setupType == "full" {
 		uninstallSetup()
 	}
-	By("uninstalling the Prometheus manager bundle")
-	UninstallPrometheusOperator()
 
 	deleteNamespace(ctx)
-	deleteRbac(ctx)
 })
 
 var _ = AfterEach(func() {
@@ -447,11 +620,3 @@ var _ = AfterEach(func() {
 	}
 
 })
-
-func Wait5() {
-	time.Sleep(5 * time.Second)
-}
-
-func Wait10() {
-	time.Sleep(10 * time.Second)
-}
