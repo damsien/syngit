@@ -87,21 +87,21 @@ func (r *RemoteSyncerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// When rs reconciled, then create a path handled by the dynamic webhook server
 	r.webhookServer.Register(remoteSyncer, webhookPath)
 
-	certPath := "/tmp/k8s-webhook-server/serving-certs/tls.crt"
 	// Read the content of the certificate file
 	var caCert []byte
 	var certError error
-	if caCert, certError = os.ReadFile(certPath); certError != nil {
-		if !r.devMode {
+	if !r.devMode {
+		const certPath = "/tmp/k8s-webhook-server/serving-certs/tls.crt"
+		if caCert, certError = os.ReadFile(certPath); certError != nil {
 			log.Log.Error(certError, fmt.Sprintf("failed to read the cert file %s", certPath))
 			r.Recorder.Event(&remoteSyncer, "Warning", "WebhookCertFail", "Operator internal error : the certificate file failed to be read")
 			return reconcile.Result{}, certError
-		} else {
-			if caCert, certError = os.ReadFile(r.devWebhookCert); certError != nil {
-				log.Log.Error(certError, fmt.Sprintf("failed to read the cert file %s", r.devWebhookCert))
-				r.Recorder.Event(&remoteSyncer, "Warning", "WebhookCertFail", "Operator internal error : the certificate file failed to be read")
-				return reconcile.Result{}, certError
-			}
+		}
+	} else {
+		if caCert, certError = os.ReadFile(r.devWebhookCert); certError != nil {
+			log.Log.Error(certError, fmt.Sprintf("failed to read the cert file %s", r.devWebhookCert))
+			r.Recorder.Event(&remoteSyncer, "Warning", "WebhookCertFail", "Operator internal error : the certificate file failed to be read")
+			return reconcile.Result{}, certError
 		}
 	}
 
