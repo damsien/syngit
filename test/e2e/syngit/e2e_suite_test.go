@@ -68,14 +68,27 @@ const (
 	rubPermissionsDeniedMessage = "is not allowed to get the referenced remoteuser"
 )
 
+// CMD & CLIENT
 var cmd *exec.Cmd
 var sClient *SyngitTestUsersClientset
 
-const projectimage = "local/syngit-controller:dev"
-
-var setupType string
+// PLATFORMS FQDN
 var gitP1Fqdn string
 var gitP2Fqdn string
+
+// KIND CLUSTER
+var clusterAlreadyExistsBefore = false
+
+// RBAC
+const reducedPermissionsCRName = "secret-rs-ru-cluster-role"
+
+// MANAGER
+var k8sManager ctrl.Manager
+var cfg *rest.Config
+var testEnv *envtest.Environment
+
+// FULL OR FAST
+var setupType string
 
 func init() {
 	flag.StringVar(&setupType, "setup", "full", "Specify the setup type: fast or full")
@@ -97,34 +110,25 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "e2e suite syngit")
 }
 
-const reducedPermissionsCRName = "secret-rs-ru-cluster-role"
+// setupCluster creates a kind cluster if it doesn't exist using the .env file for the name.
+func setupCluster() {
+	By("creating the cluster")
+	cmd = exec.Command("kind", "create", "cluster", "--name", os.Getenv("CLUSTER_NAME"))
+	_, err := Run(cmd)
+	if err != nil {
+		clusterAlreadyExistsBefore = true
+	}
+}
 
-func installationSetup() {
+// setupGitea installs the 2 gitea platforms charts and intialize the repos & users permissions.
+func setupGitea() {
 	By("setuping gitea repos & users")
 	cmd = exec.Command("make", "setup-gitea")
 	_, err := Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	// By("installing the cert-manager")
-	// Expect(InstallCertManager()).To(Succeed())
-
-	// By("loading the the manager(Operator) image on Kind")
-	// err = utils.LoadImageToKindClusterWithName(projectimage)
-	// ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
 }
 
-func createCertificates() {
-	// By("creating the certificates for the dynamic webhook")
-	// cmd = exec.Command("./config/webhook/gen-certs-serv-cli.sh")
-	// _, errCmd := Run(cmd)
-	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
-}
-
-var k8sManager ctrl.Manager
-var cfg *rest.Config
-var testEnv *envtest.Environment
-
+// setupManager creates the manager and the webhooks for the tests.
 func setupManager() {
 
 	os.Setenv("MANAGER_NAMESPACE", "syngit")
@@ -137,18 +141,12 @@ func setupManager() {
 		},
 		CRDDirectoryPaths: []string{filepath.Join(".", "config", "crd", "bases")},
 
-		// The BinaryAssetsDirectory is only required if you want to run the tests directly
-		// without call the makefile target test. If not informed it will look for the
-		// default path defined in controller-runtime which is /usr/local/kubebuilder/.
-		// Note that you must have the required binaries setup under the bin directory to perform
-		// the tests directly. When we run make test it will be setup and used automatically.
 		BinaryAssetsDirectory: filepath.Join(".", "bin", "k8s",
 			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 
-		ControlPlaneStartTimeout: 5 * 30 * time.Second, // Increase timeout to 5 minutes or as needed
+		ControlPlaneStartTimeout: 5 * 30 * time.Second,
 	}
 
-	// cfg is defined in this file globally.
 	var errTest error
 	cfg, errTest = testEnv.Start()
 	Expect(errTest).NotTo(HaveOccurred())
@@ -237,6 +235,7 @@ func setupManager() {
 	}).Should(Succeed())
 }
 
+// rbacSetup creates the RBAC permissions of the k8s users (listed in the mock-users.go Users array).
 func rbacSetup(ctx context.Context) {
 	By("setting the default client successfully")
 	sClient = &SyngitTestUsersClientset{}
@@ -351,6 +350,7 @@ func rbacSetup(ctx context.Context) {
 	}
 }
 
+// namespaceSetup creates the test namespace and the secrets for the users to connect to the gitea platforms.
 func namespaceSetup(ctx context.Context) {
 
 	By("creating the test namespace")
@@ -387,7 +387,8 @@ func namespaceSetup(ctx context.Context) {
 	}
 }
 
-func isSetupInstalled() bool {
+// isGitlabInstalled checks if the gitea charts are installed on the 2 platform's namespace.
+func isGiteaInstalled() bool {
 	By("checking the gitea installation")
 	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM1"))
 	_, err := Run(cmd)
@@ -396,11 +397,7 @@ func isSetupInstalled() bool {
 	}
 	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM2"))
 	_, err = Run(cmd)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 var _ = BeforeSuite(func() {
@@ -408,31 +405,15 @@ var _ = BeforeSuite(func() {
 	log.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	if setupType == "full" {
-		installationSetup()
+		setupCluster()
+		setupGitea()
 	}
-	if setupType == "fast" && !isSetupInstalled() {
-		installationSetup()
+	if setupType == "fast" && !isGiteaInstalled() {
+		setupGitea()
 	}
 
-	createCertificates()
 	setupManager()
 	rbacSetup(ctx)
-
-	// By("creating the syngit namespace")
-	// _, errCmd := sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
-	// 	&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
-	// 	metav1.CreateOptions{},
-	// )
-	// Expect(errCmd).NotTo(HaveOccurred())
-
-	// By("installing webhooks")
-	// cmd = exec.Command("make", "install-webhooks")
-	// _, errCmd = Run(cmd)
-	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
-
-	// By("installing prometheus operator")
-	// Expect(InstallPrometheusOperator()).To(Succeed())
-
 	namespaceSetup(ctx)
 
 	By("retrieving the gitea urls")
@@ -445,7 +426,15 @@ var _ = BeforeSuite(func() {
 	fmt.Printf("  Gitea URL for %s: %s\n", os.Getenv("PLATFORM2"), gitP2Fqdn)
 })
 
+// uninstallSetup deletes the kind cluster it did not exist before and uninstall the gitea charts.
 func uninstallSetup() {
+	if !clusterAlreadyExistsBefore {
+		By("deleting the old cluster")
+		cmd = exec.Command("kind", "delete", "cluster", "--name", os.Getenv("CLUSTER_NAME"))
+		_, err := Run(cmd)
+		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	}
+
 	By("uninstalling gitea")
 	cmd = exec.Command("make", "cleanup-gitea")
 	_, err := Run(cmd)
@@ -453,13 +442,7 @@ func uninstallSetup() {
 
 }
 
-func deleteNamespace(ctx context.Context) {
-
-	// By("deleting the test namespace")
-	// err := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{GracePeriodSeconds: func() *int64 { i := int64(0); return &i }()})
-	// Expect(err).NotTo(HaveOccurred())
-}
-
+// deleteRbac deletes the RBAC permissions of the k8s users.
 func deleteRbac(ctx context.Context) {
 
 	By("deleting the global user's RBAC")
@@ -478,57 +461,15 @@ var _ = AfterSuite(func() {
 
 	deleteRbac(ctx)
 
-	// By("deleting the syngit namespace")
-	// errCmd := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, operatorNamespace,
-	// 	metav1.DeleteOptions{},
-	// )
-	// Expect(errCmd).NotTo(HaveOccurred())
-
-	// By("deleting the webhooks")
-	// errCmd := sClient.KAs(Admin).AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, "validating-webhook-configuration",
-	// 	metav1.DeleteOptions{},
-	// )
-	// Expect(errCmd).NotTo(HaveOccurred())
-
 	By("tearing down the test environment")
 	Eventually(func() bool {
 		errTestEnv := testEnv.Stop()
 		return errTestEnv == nil
 	}, timeout, interval).Should(BeTrue())
 
-	// By("uninstalling webhooks")
-	// cmd = exec.Command("make", "uninstall-webhooks")
-	// _, errCmd = Run(cmd)
-	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
-
-	// By("setting up the global client")
-	// kubeconfig := os.Getenv("KUBECONFIG")
-	// if kubeconfig == "" {
-	// 	if home := homedir.HomeDir(); home != "" {
-	// 		kubeconfig = fmt.Sprintf("%s/.kube/config", home)
-	// 	}
-	// }
-
-	// config, errConfig := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// ExpectWithOffset(1, errConfig).NotTo(HaveOccurred())
-
-	// sClient = &SyngitTestUsersClientset{}
-	// errClient := sClient.Initialize(config)
-	// ExpectWithOffset(1, errClient).NotTo(HaveOccurred())
-
-	// By("cleaning up the certificates")
-	// cmd = exec.Command("rm", "-rf", "/tmp/k8s-webhook-server/serving-certs/")
-	// _, errCmd := Run(cmd)
-	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
-
-	// By("uninstalling the Prometheus manager bundle")
-	// UninstallPrometheusOperator()
-
 	if setupType == "full" {
 		uninstallSetup()
 	}
-
-	deleteNamespace(ctx)
 })
 
 var _ = AfterEach(func() {
@@ -619,6 +560,7 @@ var _ = AfterEach(func() {
 
 })
 
+// Wait3 sleeps for 3 seconds
 func Wait3() {
 	time.Sleep(3 * time.Second)
 }
