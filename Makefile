@@ -157,7 +157,7 @@ build: manifests generate fmt vet ## Build manager binary.
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	cd $(WEBHOOK_PATH) && ./gen-certs-serv-cli.sh 1 >/dev/null
-	export MANAGER_NAMESPACE=syngit DYNAMIC_WEBHOOK_NAME=remotesyncer.syngit.io DEV=true && go run cmd/main.go
+	export MANAGER_NAMESPACE=syngit DYNAMIC_WEBHOOK_NAME=remotesyncer.syngit.io DEV_URL="https://172.17.0.1:9444" DEV_CERTS="/tmp/k8s-webhook-server/serving-certs" && go run cmd/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.

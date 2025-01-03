@@ -136,6 +136,7 @@ var _ = Describe("09 Multi RemoteSyncer test", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		By("creating a test configmap")
+		Wait3()
 		cm := &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ConfigMap",
@@ -153,6 +154,7 @@ var _ = Describe("09 Multi RemoteSyncer test", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking that the configmap is present in the blue repo")
+		Wait3()
 		blueRepo := &Repo{
 			Fqdn:  gitP1Fqdn,
 			Owner: "syngituser",
@@ -279,6 +281,7 @@ var _ = Describe("09 Multi RemoteSyncer test", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		By("creating a test configmap")
+		Wait3()
 		cm := &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ConfigMap",
@@ -296,6 +299,7 @@ var _ = Describe("09 Multi RemoteSyncer test", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking that the configmap is not present in the blue repo")
+		Wait3()
 		blueRepo := &Repo{
 			Fqdn:  gitP1Fqdn,
 			Owner: "syngituser",

@@ -115,10 +115,10 @@ func installationSetup() {
 }
 
 func createCertificates() {
-	By("creating the certificates for the dynamic webhook")
-	cmd = exec.Command("./config/webhook/gen-certs-serv-cli.sh")
-	_, errCmd := Run(cmd)
-	ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+	// By("creating the certificates for the dynamic webhook")
+	// cmd = exec.Command("./config/webhook/gen-certs-serv-cli.sh")
+	// _, errCmd := Run(cmd)
+	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
 }
 
 var k8sManager ctrl.Manager
@@ -129,7 +129,6 @@ func setupManager() {
 
 	os.Setenv("MANAGER_NAMESPACE", "syngit")
 	os.Setenv("DYNAMIC_WEBHOOK_NAME", "remotesyncer.syngit.io")
-	os.Setenv("DEV", "true")
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -145,6 +144,8 @@ func setupManager() {
 		// the tests directly. When we run make test it will be setup and used automatically.
 		BinaryAssetsDirectory: filepath.Join(".", "bin", "k8s",
 			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
+
+		ControlPlaneStartTimeout: 5 * 30 * time.Second, // Increase timeout to 5 minutes or as needed
 	}
 
 	// cfg is defined in this file globally.
@@ -170,14 +171,18 @@ func setupManager() {
 	})
 	Expect(errK8sManager).ToNot(HaveOccurred())
 
+	By("setting up the webhooks dev variables")
+	os.Setenv("DEV_MODE", "true")
+	os.Setenv("DEV_WEBHOOK_HOST", fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort))
+	os.Setenv("DEV_WEBHOOK_CERT", webhookInstallOptions.LocalServingCertDir+"/tls.crt")
+
+	By("registring webhook server")
 	errWebhook := webhooksyngitv1beta2.SetupRemoteUserWebhookWithManager(k8sManager)
 	Expect(errWebhook).NotTo(HaveOccurred())
 	errWebhook = webhooksyngitv1beta2.SetupRemoteSyncerWebhookWithManager(k8sManager)
 	Expect(errWebhook).NotTo(HaveOccurred())
 	errWebhook = webhooksyngitv1beta2.SetupRemoteUserBindingWebhookWithManager(k8sManager)
 	Expect(errWebhook).NotTo(HaveOccurred())
-
-	By("registring webhook server")
 	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remoteuser-association", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserAssociationWebhookHandler{
 		Client:  k8sManager.GetClient(),
 		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
@@ -395,13 +400,6 @@ func isSetupInstalled() bool {
 		return false
 	}
 
-	By("checking the cert-manager installation")
-	cmd = exec.Command("helm", "status", "cert-manager", "-n", "cert-manager")
-	_, err = Run(cmd)
-	if err != nil { //nolint:gosimple
-		return false
-	}
-
 	return true
 }
 
@@ -518,10 +516,10 @@ var _ = AfterSuite(func() {
 	// errClient := sClient.Initialize(config)
 	// ExpectWithOffset(1, errClient).NotTo(HaveOccurred())
 
-	By("cleaning up the certificates")
-	cmd = exec.Command("rm", "-rf", "/tmp/k8s-webhook-server/serving-certs/")
-	_, errCmd := Run(cmd)
-	ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
+	// By("cleaning up the certificates")
+	// cmd = exec.Command("rm", "-rf", "/tmp/k8s-webhook-server/serving-certs/")
+	// _, errCmd := Run(cmd)
+	// ExpectWithOffset(1, errCmd).NotTo(HaveOccurred())
 
 	// By("uninstalling the Prometheus manager bundle")
 	// UninstallPrometheusOperator()
@@ -620,3 +618,7 @@ var _ = AfterEach(func() {
 	}
 
 })
+
+func Wait3() {
+	time.Sleep(3 * time.Second)
+}

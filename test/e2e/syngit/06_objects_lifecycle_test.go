@@ -115,6 +115,7 @@ var _ = Describe("06 Test objects lifecycle", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking that the RemoteUserBinding refers to 2 RemoteUsers")
+		Wait3()
 		nnRub := types.NamespacedName{
 			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Luffy)),
 			Namespace: namespace,
@@ -135,6 +136,7 @@ var _ = Describe("06 Test objects lifecycle", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking that RemoteUserBinding now refers to only one RemoteUser")
+		Wait3()
 		Eventually(func() bool {
 			err := sClient.As(Luffy).Get(nnRub, getRub)
 			return err == nil
@@ -218,6 +220,7 @@ var _ = Describe("06 Test objects lifecycle", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking that the ValidationWebhhok scopes sts")
+		Wait3()
 		nnValidation := types.NamespacedName{
 			Name: remotesyncerValidationWebhookName,
 		}

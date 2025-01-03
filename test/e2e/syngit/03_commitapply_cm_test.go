@@ -102,6 +102,7 @@ var _ = Describe("03 CommitApply a ConfigMap", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("creating a test configmap")
+		Wait3()
 		cm := &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "ConfigMap",
@@ -119,6 +120,7 @@ var _ = Describe("03 CommitApply a ConfigMap", func() {
 		}, timeout, interval).Should(BeTrue())
 
 		By("checking if the configmap is present on the repo")
+		Wait3()
 		repo := &Repo{
 			Fqdn:  gitP1Fqdn,
 			Owner: "syngituser",

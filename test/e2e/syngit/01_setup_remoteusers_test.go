@@ -71,6 +71,7 @@ var _ = Describe("01 Create RemoteUser", func() {
 		_ = sClient.As(Luffy).Get(nnRuLuffy, ruLuffy)
 
 		By("checking if the RemoteUserBinding for Luffy exists")
+		Wait3()
 		nnRubLuffy := types.NamespacedName{
 			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Luffy)),
 			Namespace: namespace,
@@ -108,6 +109,7 @@ var _ = Describe("01 Create RemoteUser", func() {
 		_ = sClient.As(Sanji).Get(nnRuSanji, ruSanji)
 
 		By("checking that the RemoteUserBinding for Sanji does not exist")
+		Wait3()
 		nnRubSanji := types.NamespacedName{
 			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Sanji)),
 			Namespace: namespace,
