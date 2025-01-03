@@ -120,7 +120,7 @@ func setupCluster() {
 	}
 }
 
-// setupGitea installs the 2 gitea platforms charts and intialize the repos & users permissions.
+// setupGitea installs the 2 gitea platforms charts and initialize the repos & users permissions.
 func setupGitea() {
 	By("setuping gitea repos & users")
 	cmd = exec.Command("make", "setup-gitea")

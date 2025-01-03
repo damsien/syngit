@@ -105,8 +105,8 @@ test: manifests generate fmt vet envtest ## Run tests.
 test-build:
 	go test ./test/e2e/build -v -ginkgo.v
 
-DEPREACTED_API_VERSIONS=$(go list ./... | grep -oP 'v\d+\w+\d+' | sort -uV | awk '{if ($0 < "v1beta2") print}' | paste -sd "|" -)
-COVERPKG = $(shell go list ./... | grep -v 'test' | grep -v -E '$(DEPREACTED_API_VERSIONS)' | paste -sd "," -)
+DEPREACTED_API_VERSIONS = $(shell go list ./... | grep -oP 'v\d+\w+\d+' | sort -uV | awk 'NR == 1 {latest = $$0} NR > 1 {print prev} {prev = $$0}' | grep -v '^$$' | paste -sd "|" -)
+COVERPKG = $(shell go list ./... | grep -v 'test' | grep -v -E "$(DEPREACTED_API_VERSIONS)" | paste -sd "," -)
 
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e:
