@@ -214,6 +214,12 @@ func main() {
 			Client:  mgr.GetClient(),
 			Decoder: admission.NewDecoder(mgr.GetScheme()),
 		}})
+		mgr.GetWebhookServer().Register("/syngit-v1beta2-remoteuserbinding-manager", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserBindingManagerWebhookHandler{
+			Client:         mgr.GetClient(),
+			Decoder:        admission.NewDecoder(mgr.GetScheme()),
+			Namespace:      os.Getenv("MANAGER_NAMESPACE"),
+			ServiceAccount: os.Getenv("MANAGER_SERVICEACCOUNT"),
+		}})
 	}
 
 	//+kubebuilder:scaffold:builder

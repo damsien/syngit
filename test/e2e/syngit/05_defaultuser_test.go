@@ -18,6 +18,7 @@ package e2e_syngit
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -64,6 +65,7 @@ var _ = Describe("05 Use a default user", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

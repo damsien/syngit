@@ -67,6 +67,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

@@ -18,6 +18,7 @@ package e2e_syngit
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -65,6 +66,7 @@ var _ = Describe("02 CommitOnly a ConfigMap", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

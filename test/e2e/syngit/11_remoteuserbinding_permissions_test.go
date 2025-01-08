@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_syngit
 
 import (
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -78,6 +79,7 @@ var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Brook).CreateOrUpdate(remoteUserBindingBrook)
+			fmt.Println(err)
 			return err != nil && strings.Contains(err.Error(), rubPermissionsDeniedMessage)
 		}, timeout, interval).Should(BeTrue())
 

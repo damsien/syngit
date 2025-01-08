@@ -17,26 +17,26 @@ limitations under the License.
 package e2e_syngit
 
 import (
-	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta2"
 	. "github.com/syngit-org/syngit/test/utils"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-var _ = Describe("01 Create RemoteUser", func() {
+var _ = Describe("12 RemoteUserBinding labels", func() {
 
 	const (
-		remoteUserLuffyName = "remoteuser-luffy"
-		remoteUserSanjiName = "remoteuser-sanji"
+		remoteUserLuffyName        = "remoteuser-luffy"
+		remoteUserBindingLuffyName = "remoteuserbinding-luffy"
 	)
 
-	It("should instantiate the RemoteUser correctly (with RemoteUserBinding)", func() {
+	It("should instantiate the RemoteUserBinding correctly (without labels)", func() {
 		By("adding syngit to scheme")
 		err := syngit.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
@@ -47,9 +47,6 @@ var _ = Describe("01 Create RemoteUser", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
 				Namespace: namespace,
-				Annotations: map[string]string{
-					syngit.RubAnnotation: "true",
-				},
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",
@@ -61,64 +58,77 @@ var _ = Describe("01 Create RemoteUser", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
-			fmt.Println(err)
-			return err == nil
-		}, timeout, interval).Should(BeTrue())
-		nnRuLuffy := types.NamespacedName{
-			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Luffy)),
-			Namespace: namespace,
-		}
-		ruLuffy := &syngit.RemoteUser{}
-		_ = sClient.As(Luffy).Get(nnRuLuffy, ruLuffy)
-
-		By("checking if the RemoteUserBinding for Luffy exists")
-		Wait3()
-		nnRubLuffy := types.NamespacedName{
-			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Luffy)),
-			Namespace: namespace,
-		}
-		rubLuffy := &syngit.RemoteUserBinding{}
-		Eventually(func() bool {
-			err := sClient.As(Luffy).Get(nnRubLuffy, rubLuffy)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
-		By("creating the RemoteUser for Sanji (without RemoteUserBinding)")
-		sanjiSecretName := string(Sanji) + "-creds"
-		remoteUserSanji := &syngit.RemoteUser{
+		By("creating the RemoteUserBinding")
+		remoteuserbinding := &syngit.RemoteUserBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      remoteUserSanjiName,
+				Name:      remoteUserBindingLuffyName,
+				Namespace: namespace,
+			},
+			Spec: syngit.RemoteUserBindingSpec{
+				RemoteRefs: []corev1.ObjectReference{{Name: remoteUserLuffyName}},
+				Subject: rbacv1.Subject{
+					Kind: rbacv1.UserKind,
+					Name: "dummyUser",
+				},
+			},
+		}
+		Eventually(func() bool {
+			err := sClient.As(Luffy).CreateOrUpdate(remoteuserbinding)
+			return err == nil
+		}, timeout, interval).Should(BeTrue())
+
+	})
+
+	It("should not instantiate the RemoteUserBinding (with label)", func() {
+		By("adding syngit to scheme")
+		err := syngit.AddToScheme(scheme.Scheme)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("creating the RemoteUser for Luffy")
+		luffySecretName := string(Luffy) + "-creds"
+		remoteUserLuffy := &syngit.RemoteUser{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      remoteUserLuffyName,
 				Namespace: namespace,
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",
 				GitBaseDomainFQDN: gitP1Fqdn,
 				SecretRef: corev1.SecretReference{
-					Name: sanjiSecretName,
+					Name: luffySecretName,
 				},
 			},
 		}
 		Eventually(func() bool {
-			err := sClient.As(Sanji).CreateOrUpdate(remoteUserSanji)
+			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
-		nnRuSanji := types.NamespacedName{
-			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Sanji)),
-			Namespace: namespace,
-		}
-		ruSanji := &syngit.RemoteUser{}
-		_ = sClient.As(Sanji).Get(nnRuSanji, ruSanji)
 
-		By("checking that the RemoteUserBinding for Sanji does not exist")
-		Wait3()
-		nnRubSanji := types.NamespacedName{
-			Name:      fmt.Sprintf("%s%s", syngit.RubPrefix, string(Sanji)),
-			Namespace: namespace,
+		By("creating the RemoteUserBinding")
+		remoteuserbinding := &syngit.RemoteUserBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      remoteUserBindingLuffyName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"managed-by": "syngit.io",
+				},
+			},
+			Spec: syngit.RemoteUserBindingSpec{
+				RemoteRefs: []corev1.ObjectReference{{Name: remoteUserLuffyName}},
+				Subject: rbacv1.Subject{
+					Kind: rbacv1.UserKind,
+					Name: "dummyUser",
+				},
+			},
 		}
-		rubSanji := &syngit.RemoteUserBinding{}
+		Eventually(func() bool {
+			err := sClient.As(Luffy).CreateOrUpdate(remoteuserbinding)
+			return err != nil && strings.Contains(err.Error(), rubLabelsDeniedMessage)
+		}, timeout, interval).Should(BeTrue())
 
-		errRub := sClient.As(Sanji).Get(nnRubSanji, rubSanji)
-		Expect(errRub).To(HaveOccurred())
-		Expect(errRub.Error()).To(ContainSubstring("not found"))
 	})
+
 })

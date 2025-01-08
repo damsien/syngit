@@ -66,6 +66,7 @@ var _ = Describe("06 Test objects lifecycle", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffyJupyter)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

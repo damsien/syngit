@@ -37,10 +37,12 @@ import (
 	webhooksyngitv1beta2 "github.com/syngit-org/syngit/internal/webhook/v1beta2"
 	"github.com/syngit-org/syngit/test/utils"
 	. "github.com/syngit-org/syngit/test/utils"
+	authentication "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,6 +68,7 @@ const (
 	rsPermissionsDeniedMessage  = "is not allowed to scope"
 	ruPermissionsDeniedMessage  = "is not allowed to get the secret"
 	rubPermissionsDeniedMessage = "is not allowed to get the referenced remoteuser"
+	rubLabelsDeniedMessage      = "managed by Syngit"
 )
 
 // CMD & CLIENT
@@ -131,10 +134,13 @@ func setupGitea() {
 // setupManager creates the manager and the webhooks for the tests.
 func setupManager() {
 
-	os.Setenv("MANAGER_NAMESPACE", "syngit")
-	os.Setenv("DYNAMIC_WEBHOOK_NAME", "remotesyncer.syngit.io")
+	syngitSa := "syngit"
 
 	By("bootstrapping test environment")
+
+	os.Setenv("MANAGER_NAMESPACE", operatorNamespace)
+	os.Setenv("DYNAMIC_WEBHOOK_NAME", "remotesyncer.syngit.io")
+
 	testEnv = &envtest.Environment{
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths: []string{filepath.Join(".", "config", "webhook", "manifests.yaml")},
@@ -155,6 +161,59 @@ func setupManager() {
 	errScheme := syngit.AddToScheme(scheme.Scheme)
 	Expect(errScheme).NotTo(HaveOccurred())
 
+	By("creating the syngit namespace")
+	k8sClient, nsErr := kubernetes.NewForConfig(cfg)
+	Expect(nsErr).NotTo(HaveOccurred())
+	_, nsErr = k8sClient.CoreV1().Namespaces().Create(context.TODO(),
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+		metav1.CreateOptions{},
+	)
+	Expect(nsErr).NotTo(HaveOccurred())
+
+	By("creating the service account")
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      syngitSa,
+			Namespace: operatorNamespace,
+		},
+	}
+	_, errSa := k8sClient.CoreV1().ServiceAccounts(operatorNamespace).Create(context.TODO(), sa, metav1.CreateOptions{})
+	Expect(errSa).NotTo(HaveOccurred())
+
+	By("granting cluster-admin to the service account")
+	_, errSa = k8sClient.RbacV1().ClusterRoleBindings().Create(context.TODO(), &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster-admin-" + syngitSa,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      syngitSa,
+				Namespace: operatorNamespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}, metav1.CreateOptions{})
+	Expect(errSa).NotTo(HaveOccurred())
+	time.Sleep(2 * time.Second)
+
+	By("by retrieving the service account's token")
+	tokenRequest := &authentication.TokenRequest{
+		Spec: authentication.TokenRequestSpec{
+			Audiences:         []string{"https://kubernetes.default.svc"},
+			ExpirationSeconds: func(i int64) *int64 { return &i }(3600), // 1-hour expiration
+		},
+	}
+	tokenResponse, errSa := k8sClient.CoreV1().ServiceAccounts(operatorNamespace).CreateToken(context.TODO(), syngitSa, tokenRequest, metav1.CreateOptions{})
+	Expect(errSa).NotTo(HaveOccurred())
+
+	By("setting the bearer token in the config")
+	cfg.BearerToken = tokenResponse.Status.Token
+
 	By("creating the manager")
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 	var errK8sManager error
@@ -167,14 +226,16 @@ func setupManager() {
 		}),
 		LeaderElection: false,
 	})
+	fmt.Println(k8sManager.GetConfig().BearerToken)
 	Expect(errK8sManager).ToNot(HaveOccurred())
 
 	By("setting up the webhooks dev variables")
+	fmt.Println(k8sManager.GetConfig().BearerToken)
+	os.Setenv("MANAGER_SERVICEACCOUNT", syngitSa)
 	os.Setenv("DEV_MODE", "true")
 	os.Setenv("DEV_WEBHOOK_HOST", fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort))
 	os.Setenv("DEV_WEBHOOK_CERT", webhookInstallOptions.LocalServingCertDir+"/tls.crt")
 
-	By("registring webhook server")
 	errWebhook := webhooksyngitv1beta2.SetupRemoteUserWebhookWithManager(k8sManager)
 	Expect(errWebhook).NotTo(HaveOccurred())
 	errWebhook = webhooksyngitv1beta2.SetupRemoteSyncerWebhookWithManager(k8sManager)
@@ -196,6 +257,12 @@ func setupManager() {
 	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remotesyncer-rules-permissions", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteSyncerWebhookHandler{
 		Client:  k8sManager.GetClient(),
 		Decoder: admission.NewDecoder(k8sManager.GetScheme()),
+	}})
+	k8sManager.GetWebhookServer().Register("/syngit-v1beta2-remoteuserbinding-manager", &webhook.Admission{Handler: &webhooksyngitv1beta2.RemoteUserBindingManagerWebhookHandler{
+		Client:         k8sManager.GetClient(),
+		Decoder:        admission.NewDecoder(k8sManager.GetScheme()),
+		Namespace:      os.Getenv("MANAGER_NAMESPACE"),
+		ServiceAccount: os.Getenv("MANAGER_SERVICEACCOUNT"),
 	}})
 
 	By("setting up the controllers")
@@ -456,6 +523,16 @@ func deleteRbac(ctx context.Context) {
 
 }
 
+func deleteNamespaces(ctx context.Context) {
+	By("deleting the test namespace")
+	nsErr := sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+	Expect(nsErr).NotTo(HaveOccurred())
+
+	By("deleting the syngit namespace")
+	nsErr = sClient.KAs(Admin).CoreV1().Namespaces().Delete(ctx, operatorNamespace, metav1.DeleteOptions{})
+	Expect(nsErr).NotTo(HaveOccurred())
+}
+
 var _ = AfterSuite(func() {
 	ctx := context.TODO()
 
@@ -466,6 +543,8 @@ var _ = AfterSuite(func() {
 		errTestEnv := testEnv.Stop()
 		return errTestEnv == nil
 	}, timeout, interval).Should(BeTrue())
+
+	deleteNamespaces(ctx)
 
 	if setupType == "full" {
 		uninstallSetup()

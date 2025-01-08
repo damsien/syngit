@@ -18,6 +18,7 @@ package e2e_syngit
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -68,6 +69,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Brook).CreateOrUpdate(remoteUserBrook)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
