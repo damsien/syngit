@@ -23,8 +23,16 @@ Syngit is a Kubernetes operator that allows you to push resources on a git repos
 
 ### Prerequisites
 - Access to a Kubernetes v1.11.3+ cluster.
-- ⚠️ Cert Manager version 1.13+ on the cluster.
 - Helm version v3.0.0+.
+- **Cert-manager for Webhook TLS Certificates**:
+    - This chart deploy `cert-manager` (version ~1.17.x, as specified in `Chart.yaml`) as a dependency to manage these certificates automatically.
+    - **Important Note on `cert-manager` CRDs**: For the most reliable experience, especially in production environments, it is **highly recommended** to install `cert-manager` CustomResourceDefinitions (CRDs) **separately and before** installing the Syngit chart. This practice helps avoid potential timing issues where Syngit might try to use `cert-manager` resources before their definitions are fully recognized by the Kubernetes API server.
+        - You can obtain the CRD manifest from the official [cert-manager releases page](https://github.com/cert-manager/cert-manager/releases). For example, for cert-manager v1.17.X (replace `v1.17.X` with the specific patch version corresponding to the chart's dependency, e.g., `v1.17.2`):
+          ```bash
+          kubectl apply -f [https://github.com/cert-manager/cert-manager/releases/download/v1.17.X/cert-manager.crds.yaml](https://github.com/cert-manager/cert-manager/releases/download/v1.17.X/cert-manager.crds.yaml)
+          ```
+        - After applying the CRDs, wait a few moments for them to be established in your cluster before proceeding with the Syngit chart installation.
+        - If you install CRDs separately, you can set `cert-manager.installCRDs: false` in your Syngit `values.yaml` when enabling the `cert-manager` dependency (`webhook.certmanager.enabled: true`).
 
 ### Installation
 

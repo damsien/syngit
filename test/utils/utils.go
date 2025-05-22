@@ -31,7 +31,9 @@ const (
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
 		"releases/download/%s/bundle.yaml"
 
-	certmanagerVersion = "v1.13.3"
+	certmanagerVersion = "v1.17.2"
+	certmanagerCRDsURL = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.crds.yaml"
+
 	certmanagerURLTmpl = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
 )
 
@@ -90,6 +92,14 @@ func UninstallCertManager() {
 	}
 }
 
+func UninstallCertManagerCRDs() {
+	url := fmt.Sprintf(certmanagerCRDsURL, certmanagerVersion)
+	cmd := exec.Command("kubectl", "delete", "-f", url)
+	if _, err := Run(cmd); err != nil {
+		warnError(err)
+	}
+}
+
 // InstallCertManager installs the cert manager bundle.
 // func InstallCertManager() error {
 // 	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
@@ -113,6 +123,7 @@ func UninstallCertManager() {
 // 	return err
 // }
 
+// TO DO: delete following function when last stable version of syngit Helm chat is >= 0.4.8
 func InstallCertManager() error {
 	cmd := exec.Command("helm", "repo", "add", "jetstack", "https://charts.jetstack.io")
 	if _, err := Run(cmd); err != nil {
@@ -134,6 +145,17 @@ func InstallCertManager() error {
 	_, err := Run(cmd)
 	if err != nil {
 		return err
+	}
+
+	return err
+}
+
+func InstallCertManagerCRDs() error {
+	url := fmt.Sprintf(certmanagerCRDsURL, certmanagerVersion)
+	cmd := exec.Command("kubectl", "apply", "-f", url)
+	_, err := Run(cmd)
+	if err != nil {
+		warnError(err)
 	}
 
 	return err
