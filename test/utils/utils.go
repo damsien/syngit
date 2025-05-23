@@ -130,7 +130,7 @@ func InstallCertManager() error {
 		warnError(err)
 	}
 
-	cmd = exec.Command("helm", "install", "cert-manager", "-n", "cert-manager", "--version", "v1.16.2", "--create-namespace", "jetstack/cert-manager", "--set", "installCRDs=true")
+	cmd = exec.Command("helm", "install", "cert-manager", "-n", "cert-manager", "--version", "v1.17.2", "--create-namespace", "jetstack/cert-manager", "--set", "installCRDs=true")
 	if _, err := Run(cmd); err != nil {
 		return err
 	}

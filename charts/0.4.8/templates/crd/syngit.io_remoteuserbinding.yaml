@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-    {{- if eq .Values.webhook.certmanager.enabled true }}
+    {{- if eq .Values.certmanager.webhook.enabled true }}
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/syngit-webhook-cert
     {{- end }}
   name: remoteuserbindings.syngit.io

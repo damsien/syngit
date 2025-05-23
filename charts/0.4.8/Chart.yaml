@@ -8,7 +8,7 @@ home: https://github.com/syngit-org/syngit
 icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
 dependencies:
   - name: cert-manager
-    condition: webhook.certmanager.enabled
+    condition: certmanager.dependency.enabled
     repository: https://charts.jetstack.io
     version: ~v1.17
 maintainers:

@@ -1,18 +1,17 @@
-webhook:
-  certmanager:
+certmanager:
+  dependency:
+    enabled: false
+  webhook:
     enabled: true
     certificate:
       name: webhook-cert
       secret: webhook-server-cert
 
-cert-manager: 
-  installCRDs: false
-
 controller:
   image:
     prefix: ghcr.io/syngit-org
     name: syngit
-    tag: v0.4.7
+    tag: v0.4.8
     # imagePullSecrets:
     # imagePullPolicy:
 

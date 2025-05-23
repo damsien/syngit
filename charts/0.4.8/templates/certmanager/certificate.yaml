@@ -1,4 +1,4 @@
-{{- if eq .Values.webhook.certmanager.enabled true }}
+{{- if eq .Values.certmanager.webhook.enabled true }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -30,5 +30,5 @@ spec:
   issuerRef:
     kind: Issuer
     name: {{ .Release.Name }}-selfsigned-issuer
-  secretName: {{ .Values.webhook.certmanager.certificate.secret }}
+  secretName: {{ .Values.certmanager.webhook.certificate.secret }}
 {{- end }}

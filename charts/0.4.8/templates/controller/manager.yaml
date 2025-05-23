@@ -79,4 +79,4 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: {{ .Values.webhook.certmanager.certificate.secret }}
+          secretName: {{ .Values.certmanager.webhook.certificate.secret }}

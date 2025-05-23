@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/component: webhooks
     app.kubernetes.io/created-by: {{ .Release.Name }}
     app.kubernetes.io/part-of: {{ .Release.Name }}
-  {{- if eq .Values.webhook.certmanager.enabled true }}
+  {{- if eq .Values.certmanager.webhook.enabled true }}
   annotations:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/syngit-webhook-cert
   {{- end }}
@@ -25,7 +25,7 @@ metadata:
     app.kubernetes.io/component: webhooks
     app.kubernetes.io/created-by: {{ .Release.Name }}
     app.kubernetes.io/part-of: {{ .Release.Name }}
-  {{- if eq .Values.webhook.certmanager.enabled true }}
+  {{- if eq .Values.certmanager.webhook.enabled true }}
   annotations:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/syngit-webhook-cert
   {{- end }}

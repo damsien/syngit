@@ -281,33 +281,37 @@ LATEST_CHART ?= $(shell find charts -mindepth 1 -maxdepth 1 -type d -exec basena
 CERT_MANAGER_CHART_VERSION ?= $(shell grep -A 2 'name: cert-manager' "charts/${LATEST_CHART}/Chart.lock" | grep 'version:' | sed -E 's/.*version:\s*(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
 .PHONY: chart-install
 chart-install: ## Install the latest chart version listed in the charts/ folder with 3 replicas.
-	kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_CHART_VERSION)/cert-manager.crds.yaml"
 	helm dependency update charts/$(LATEST_CHART)
+	sleep 1
+	kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_CHART_VERSION)/cert-manager.crds.yaml"
 	helm install syngit charts/$(LATEST_CHART) -n syngit --create-namespace \
 		--set controller.image.prefix=local \
 		--set controller.image.name=syngit-controller \
 		--set controller.image.tag=dev \
-		--set webhook.certmanager.enabled="true"
+		--set certmanager.dependency.enabled="true"
 
 .PHONY: chart-install-providers
 chart-install-providers: ## Install the latest chart version listed in the charts/ folder with 3 replicas.
 	helm dependency update charts/$(LATEST_CHART)
+	sleep 1
+	kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_CHART_VERSION)/cert-manager.crds.yaml"
 	helm install syngit charts/$(LATEST_CHART) -n syngit --create-namespace \
 		--set controller.image.prefix=local \
 		--set controller.image.name=syngit-controller \
 		--set controller.image.tag=dev \
 		--set providers.github.enabled="true" \
 		--set providers.gitlab.enabled="true" \
-		--set webhook.certmanager.enabled="true"
+		--set certmanager.dependency.enabled="true"
 
 .PHONY: chart-upgrade
 chart-upgrade: ## Upgrade to the latest chart version listed in the charts/ folder.
 	helm dependency update charts/$(LATEST_CHART)
+	sleep 1
+	kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_CHART_VERSION)/cert-manager.crds.yaml"
 	helm upgrade syngit charts/$(LATEST_CHART) -n syngit \
 		--set controller.image.prefix=local \
 		--set controller.image.name=syngit-controller \
-		--set controller.image.tag=dev \
-		--set webhook.certmanager.enabled="true"
+		--set controller.image.tag=dev
 
 .PHONY: chart-uninstall
 chart-uninstall: ## Uninstall the chart.
