@@ -2,6 +2,251 @@ apiVersion: v1
 entries:
   syngit:
   - apiVersion: v2
+    appVersion: 0.4.8
+    created: "2025-05-23T05:26:09.401415394Z"
+    dependencies:
+    - condition: certmanager.dependency.enabled
+      name: cert-manager
+      repository: https://charts.jetstack.io
+      version: ~v1.17
+    description: An operator to push resources to git
+    digest: cbc3cb09a6839a45551fbf1aedd1c076f2f20cebfeecbccb1ae5312cd1cfbe9e
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.8/syngit-0.4.8.tgz
+    version: 0.4.8
+  - apiVersion: v2
+    appVersion: 0.4.7
+    created: "2025-05-23T05:26:09.30961121Z"
+    description: An operator to push resources to git
+    digest: 3b4c9c3b7ce761b362e3d6a00e0a0b78fe4c4d524b2ede2a9c12475d290bcb14
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.7/syngit-0.4.7.tgz
+    version: 0.4.7
+  - apiVersion: v2
+    appVersion: 0.4.6
+    created: "2025-05-23T05:26:09.211490902Z"
+    description: An operator to push resources to git
+    digest: 36f66f123c1b73e212bdae2bf99925f24b2641f667026b507f3f2216417440df
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.6/syngit-0.4.6.tgz
+    version: 0.4.6
+  - apiVersion: v2
+    appVersion: 0.4.5
+    created: "2025-05-23T05:26:09.08584643Z"
+    description: An operator to push resources to git
+    digest: 5c80a650a5b47758e9f56e7b94d57c2d7a5e3ee34e87676b9b43721dbb66c5f2
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.5/syngit-0.4.5.tgz
+    version: 0.4.5
+  - apiVersion: v2
+    appVersion: 0.4.4
+    created: "2025-05-23T05:26:08.962139649Z"
+    description: An operator to push resources to git
+    digest: b987aaa86a66a4d897b212994368b3c04e942887e8ed222ff858589949f0337e
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.4/syngit-0.4.4.tgz
+    version: 0.4.4
+  - apiVersion: v2
+    appVersion: 0.4.3
+    created: "2025-05-23T05:26:08.861196507Z"
+    description: An operator to push resources to git
+    digest: ac2c89b94f7d57b7086d79ef3aab585e4f452e36b3011aff70c478fa502e9fca
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.3/syngit-0.4.3.tgz
+    version: 0.4.3
+  - apiVersion: v2
+    appVersion: 0.4.2
+    created: "2025-05-23T05:26:08.751798929Z"
+    description: An operator to push resources to git
+    digest: 69dd38c7ea7e1de970bb3fc595509d23d01cb664ed816d36392b476a45ccdc3c
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.2/syngit-0.4.2.tgz
+    version: 0.4.2
+  - apiVersion: v2
+    appVersion: 0.4.1
+    created: "2025-05-23T05:26:08.663844247Z"
+    description: An operator to push resources onto git
+    digest: 3b08620b24f38ecf4dfb68d0b4deba2a5456d92cf33371ee32985076a0b5bc1c
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.1/syngit-0.4.1.tgz
+    version: 0.4.1
+  - apiVersion: v2
+    appVersion: 0.4.0
+    created: "2025-05-23T05:26:08.466053818Z"
+    description: An operator to push resources onto git
+    digest: a1373fa8f7eef198dcaf389f12b69e3841748f247824fe023bc2887dc4e15cd8
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.4.0/syngit-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
+    appVersion: 0.3.5
+    created: "2025-05-23T05:26:08.339753227Z"
+    description: An operator to push resources onto git
+    digest: b886b8e760633c3ff8815a049b2b62e050c027cce1df2ebbae8cde830c306b23
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.5/syngit-0.3.5.tgz
+    version: 0.3.5
+  - apiVersion: v2
+    appVersion: 0.3.4
+    created: "2025-05-23T05:26:08.245843841Z"
+    description: An operator to push resources onto git
+    digest: 9afde60725d36f4a1095f358e81f4f228ea51af2081f5b94d3c3cc01f29ae2d3
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.4/syngit-0.3.4.tgz
+    version: 0.3.4
+  - apiVersion: v2
+    appVersion: 0.3.3
+    created: "2025-05-23T05:26:08.165022617Z"
+    description: An operator to push resources onto git
+    digest: 0364b451b7f87bdf69b5457b19ce2fbf1a0c2fe1436c958398f764ae6ca4aaa7
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.3/syngit-0.3.3.tgz
+    version: 0.3.3
+  - apiVersion: v2
+    appVersion: 0.3.2
+    created: "2025-05-23T05:26:08.066243546Z"
+    description: An operator to push resources onto git
+    digest: 2195a0410bd0eb70a5e76b876e3b3a356544b2d736e7cc7e57e857e5d148decf
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.2/syngit-0.3.2.tgz
+    version: 0.3.2
+  - apiVersion: v2
+    appVersion: 0.3.1
+    created: "2025-05-23T05:26:07.950035984Z"
+    description: An operator to push resources onto git
+    digest: 10f32212cad81b3c3c49855382d8b8716fb03e028132e16ffebdfa2e25959a6a
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.1/syngit-0.3.1.tgz
+    version: 0.3.1
+  - apiVersion: v2
+    appVersion: 0.3.0
+    created: "2025-05-23T05:26:07.79652238Z"
+    description: An operator to push resources onto git
+    digest: f7982b437c453b0b28f22d0a040c3954c1976fc5bde36aca4ffcb78f50f823d7
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.3.0/syngit-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
+    appVersion: 0.2.1
+    created: "2025-05-23T05:26:07.719441772Z"
+    description: An operator to push resources onto git
+    digest: 1c8fc68801c53b743283ac9037403cf518225f51a799903bf41db47eee004950
+    home: https://github.com/syngit-org/syngit
+    icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/icon.png
+    maintainers:
+    - email: dassieu.damien@gmail.com
+      name: Damien
+    name: syngit
+    type: application
+    urls:
+    - https://github.com/damsien/syngit/releases/download/v0.2.1/syngit-0.2.1.tgz
+    version: 0.2.1
+  - apiVersion: v2
     appVersion: 0.2.0
     created: "2024-12-21T16:12:49.990045848Z"
     description: An operator to push resources onto git
@@ -117,4 +362,4 @@ entries:
     urls:
     - https://github.com/damsien/syngit/releases/download/syngit-0.0.1/syngit-0.0.1.tgz
     version: 0.0.1
-generated: "2024-12-21T16:12:49.990091013Z"
+generated: "2025-05-23T05:26:09.401542645Z"
