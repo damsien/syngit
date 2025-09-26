@@ -2,7 +2,7 @@ package interceptor
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
@@ -75,25 +75,35 @@ func (rf *ResourceFinder) getPathsContent(wt *git.Worktree, basePath string) err
 	return nil
 }
 
-type typeMeta struct {
+type TypeMeta struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
 }
 
-type objectMeta struct {
+type ObjectMeta struct {
 	Name      string `yaml:"name"`
 	Namespace string `yaml:"namespace"`
 }
 
-type genericK8sObject struct {
-	typeMeta   `yaml:",inline"`
-	objectMeta `yaml:"metadata"`
+type GenericK8sObject struct {
+	TypeMeta   `yaml:",inline"`
+	ObjectMeta `yaml:"metadata"`
 }
 
 func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) error {
-	content, err := os.ReadFile(path)
+	f, err := wt.Filesystem.Open(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open the %s file in the worktree: %w", path, err)
+	}
+
+	content, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("failed to read the %s file in the worktree: %w", path, err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close the %s file in the worktree: %w", path, err)
 	}
 
 	docs := strings.Split(string(content), "---")
@@ -110,7 +120,7 @@ func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) err
 			continue
 		}
 
-		var obj genericK8sObject
+		var obj GenericK8sObject
 		if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
 			return fmt.Errorf("failed to unmarshal doc: %w", err)
 		}
