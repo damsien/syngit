@@ -270,7 +270,7 @@ func (gp *GitPusher) commitMessageConstructor(current string, isAddition bool) (
 			lengthBefore := len(deletionSlice[0])
 			number, err := strconv.Atoi(deletionSlice[0][lengthBefore-1:])
 			if err != nil {
-				return "", fmt.Errorf(errorMessage, err)
+				return "", fmt.Errorf("%s %w", errorMessage, err)
 			}
 			number++
 			if lengthBefore == 3 {
@@ -283,7 +283,7 @@ func (gp *GitPusher) commitMessageConstructor(current string, isAddition bool) (
 			additionSlice := strings.Split(current, addition)
 			number, err := strconv.Atoi(additionSlice[0])
 			if err != nil {
-				return "", fmt.Errorf(errorMessage, err)
+				return "", fmt.Errorf("%s %w", errorMessage, err)
 			}
 			number++
 			commitMessage = strconv.Itoa(number) + addition + additionSlice[1]

@@ -30,10 +30,21 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"github.com/go-git/go-billy/v5/memfs"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	httpgit "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/goccy/go-yaml"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+)
+
+const (
+	gitAdminUsername = "syngituser"
+	gitAdminPassword = "syngit_password"
 )
 
 type Repo struct {
@@ -71,8 +82,8 @@ var Repos = map[string]Repo{}
 
 func getAdminToken(baseFqdn string) (string, error) {
 	const (
-		username = "syngituser"
-		password = "syngit_password"
+		username = gitAdminUsername
+		password = gitAdminPassword
 	)
 	url := fmt.Sprintf("https://%s/api/v1/users/%s/tokens", baseFqdn, username)
 
@@ -162,8 +173,6 @@ func getTree(repoFqdn string, repoOwner string, repoName string, sha string) ([]
 	}
 	defer resp.Body.Close()
 
-	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get repo tree: %s", resp.Status)
 	}
@@ -196,7 +205,8 @@ func getTree(repoFqdn string, repoOwner string, repoName string, sha string) ([]
 }
 
 // searchForObjectInAllManifests checks if a YAML file in the tree contains the specified `.metadata.name` with the given value.
-func searchForObjectInAllManifests(repo Repo, tree []Tree, obj runtime.Object) (*File, error) {
+func searchForObjectInAllManifests(repo Repo, tree []Tree, obj runtime.Object) ([]File, error) {
+	files := []File{}
 	for _, entry := range tree {
 		if entry.Type == "blob" { // Only process files
 			url := strings.Replace(entry.URL, "git.example.com", repo.Fqdn, 1)
@@ -206,7 +216,7 @@ func searchForObjectInAllManifests(repo Repo, tree []Tree, obj runtime.Object) (
 			}
 
 			if containsYamlMetadataName(content, obj) {
-				return &File{Path: entry.Path, Content: content}, nil
+				files = append(files, File{Path: entry.Path, Content: content})
 			}
 		} else {
 			file, err := searchForObjectInAllManifests(repo, entry.Entries, obj)
@@ -216,9 +226,15 @@ func searchForObjectInAllManifests(repo Repo, tree []Tree, obj runtime.Object) (
 			if file != nil {
 				return file, nil
 			}
+			files = append(files, file...)
 		}
 	}
-	return nil, errors.New("object not found in all of the manifests of the repository")
+
+	if len(files) == 0 {
+		return []File{}, errors.New("object not found in all of the manifests of the repository")
+	}
+
+	return files, nil
 }
 
 // containsYAMLMetadataName parses the content of a YAML file and checks if `.metadata.name` matches the given value.
@@ -228,7 +244,7 @@ func containsYamlMetadataName(content []byte, obj runtime.Object) bool {
 		return false
 	}
 
-	var parsed map[interface{}]interface{}
+	var parsed map[string]interface{}
 	err = yaml.Unmarshal(content, &parsed)
 	if err != nil {
 		return false
@@ -255,7 +271,7 @@ func containsYamlMetadataName(content []byte, obj runtime.Object) bool {
 	return name == meta.GetName() && namespace == meta.GetNamespace() && (apiVersion == constructedApiVersion || (strings.HasPrefix(constructedApiVersion, "/") && !strings.Contains(apiVersion, "/"))) && kind == obj.GetObjectKind().GroupVersionKind().Kind
 }
 
-func isFieldDefinedInYaml(parsed map[interface{}]interface{}, path string) (interface{}, bool) {
+func isFieldDefinedInYaml(parsed map[string]interface{}, path string) (interface{}, bool) {
 	// Split the path by dots to traverse the map
 	keys := strings.Split(path, ".")
 	current := parsed
@@ -268,7 +284,7 @@ func isFieldDefinedInYaml(parsed map[interface{}]interface{}, path string) (inte
 			}
 
 			// Check if the value is a nested map
-			next, ok := value.(map[interface{}]interface{})
+			next, ok := value.(map[string]interface{})
 			if ok {
 				return isFieldDefinedInYaml(next, strings.Join(keys[1:], "."))
 			} else {
@@ -436,6 +452,72 @@ func merge(repo Repo, sourceBranch string, targetBranch string) error {
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to merge pull request: %s", string(bodyBytes))
+	}
+
+	return nil
+}
+
+func commitObjectOnSpecifiedPath(repository Repo, obj runtime.Object, path string) error {
+	repoUrl := fmt.Sprintf("https://%s/%s/%s.git", repository.Fqdn, repository.Owner, repository.Name)
+
+	repo, err := git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
+		URL:             repoUrl,
+		ReferenceName:   plumbing.NewBranchReferenceName(repository.Branch),
+		SingleBranch:    true,
+		Depth:           1,
+		InsecureSkipTLS: true,
+		Auth: &httpgit.BasicAuth{
+			Username: gitAdminUsername,
+			Password: gitAdminPassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to clone repo: %w", err)
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	content, err := yaml.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object: %w", err)
+	}
+
+	fs := wt.Filesystem
+	f, err := fs.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	if _, err := io.Copy(f, bytes.NewReader(content)); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	f.Close()
+
+	if _, err := wt.Add(path); err != nil {
+		return fmt.Errorf("failed to add file: %w", err)
+	}
+
+	_, err = wt.Commit("Update "+path, &git.CommitOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+
+	ref := plumbing.NewBranchReferenceName(repository.Branch)
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(ref + ":" + ref),
+		},
+		InsecureSkipTLS: true,
+		Auth: &httpgit.BasicAuth{
+			Username: gitAdminUsername,
+			Password: gitAdminPassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to push: %w", err)
 	}
 
 	return nil

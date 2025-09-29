@@ -130,7 +130,7 @@ func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) err
 			obj.Name == rf.SearchedName &&
 			(rf.SearchedNamespace == "" || obj.Namespace == rf.SearchedNamespace) {
 
-			docs[i] = strings.TrimSpace(string(rf.Content))
+			docs[i] = strings.TrimSpace(rf.Content)
 			rf.paths = append(rf.paths, path)
 			break
 		}

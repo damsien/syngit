@@ -153,10 +153,11 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 
 		tree, err := GetRepoTree(*repo)
 		Expect(err).ToNot(HaveOccurred())
-		getCm, err := GetObjectInRepo(*repo, tree, cm)
+		configmaps, err := GetObjectInRepo(*repo, tree, cm)
 		Expect(err).ToNot(HaveOccurred())
+		Expect(len(configmaps)).To(Equal(1))
 		var parsed map[interface{}]interface{}
-		err = yaml.Unmarshal(getCm.Content, &parsed)
+		err = yaml.Unmarshal(configmaps[0].Content, &parsed)
 		Expect(err).ToNot(HaveOccurred())
 		metadata := parsed["metadata"].(map[interface{}]interface{})
 		annotations := metadata["annotations"].(map[interface{}]interface{})
@@ -293,10 +294,11 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 
 		tree, err := GetRepoTree(*repo)
 		Expect(err).ToNot(HaveOccurred())
-		getCm, err := GetObjectInRepo(*repo, tree, cm)
+		configmaps, err := GetObjectInRepo(*repo, tree, cm)
 		Expect(err).ToNot(HaveOccurred())
+		Expect(len(configmaps)).To(Equal(1))
 		var parsed map[interface{}]interface{}
-		err = yaml.Unmarshal(getCm.Content, &parsed)
+		err = yaml.Unmarshal(configmaps[0].Content, &parsed)
 		Expect(err).ToNot(HaveOccurred())
 		metadata := parsed["metadata"].(map[interface{}]interface{})
 		annotations := metadata["annotations"].(map[interface{}]interface{})
