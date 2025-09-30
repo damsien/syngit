@@ -33,9 +33,11 @@ var _ = Describe("30 Push to an existing resource", func() {
 	ctx := context.TODO()
 
 	const (
-		remoteSyncerName    = "remotesyncer-test3"
+		remoteSyncerName1   = "remotesyncer-test30.1"
+		remoteSyncerName2   = "remotesyncer-test30.2"
 		remoteUserLuffyName = "remoteuser-luffy"
-		cmName              = "test-cm30"
+		cmName1             = "test-cm30.1"
+		cmName2             = "test-cm30.2"
 		branch              = "main"
 	)
 
@@ -69,7 +71,7 @@ var _ = Describe("30 Push to an existing resource", func() {
 		By("creating the RemoteSyncer")
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      remoteSyncerName,
+				Name:      remoteSyncerName1,
 				Namespace: namespace,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
@@ -111,7 +113,7 @@ var _ = Describe("30 Push to an existing resource", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName1, Namespace: namespace},
 			Data:       map[string]string{"test": "oui"},
 		}
 
@@ -139,6 +141,116 @@ var _ = Describe("30 Push to an existing resource", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(files)).To(Equal(1))
 		Expect(files[0].Path).To(Equal("custom.yaml"))
+
+	})
+
+	It("should commit & push the resource on the documents where it already exists", func() {
+
+		By("creating the RemoteUser & RemoteUserBinding for Luffy")
+		luffySecretName := string(Luffy) + "-creds"
+		remoteUserLuffy := &syngit.RemoteUser{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      remoteUserLuffyName,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					syngit.RubAnnotationKeyManaged: "true",
+				},
+			},
+			Spec: syngit.RemoteUserSpec{
+				Email:             "sample@email.com",
+				GitBaseDomainFQDN: gitP1Fqdn,
+				SecretRef: corev1.SecretReference{
+					Name: luffySecretName,
+				},
+			},
+		}
+		Eventually(func() bool {
+			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			return err == nil
+		}, timeout, interval).Should(BeTrue())
+
+		repoUrl := fmt.Sprintf("https://%s/%s/%s.git", gitP1Fqdn, giteaBaseNs, repo1)
+
+		By("creating the RemoteSyncer")
+		remotesyncer := &syngit.RemoteSyncer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      remoteSyncerName2,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					syngit.RtAnnotationKeyOneOrManyBranches: branch,
+				},
+			},
+			Spec: syngit.RemoteSyncerSpec{
+				InsecureSkipTlsVerify:       true,
+				DefaultBranch:               branch,
+				DefaultUnauthorizedUserMode: syngit.Block,
+				ExcludedFields:              []string{".metadata.uid"},
+				Strategy:                    syngit.CommitApply,
+				TargetStrategy:              syngit.OneTarget,
+				RemoteRepository:            repoUrl,
+				ScopedResources: syngit.ScopedResources{
+					Rules: []admissionv1.RuleWithOperations{{
+						Operations: []admissionv1.OperationType{
+							admissionv1.Create,
+							admissionv1.Delete,
+						},
+						Rule: admissionv1.Rule{
+							APIGroups:   []string{""},
+							APIVersions: []string{"v1"},
+							Resources:   []string{"configmaps"},
+						},
+					},
+					},
+				},
+			},
+		}
+		Eventually(func() bool {
+			err := sClient.As(Luffy).CreateOrUpdate(remotesyncer)
+			return err == nil
+		}, timeout, interval).Should(BeTrue())
+
+		By("Creating the configmap in the repository in a custom path")
+		Wait3()
+		yaml := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+  namespace: test
+---
+data:
+  test: oui
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm30.2
+  namespace: test
+`
+		repo := Repo{
+			Fqdn:   gitP1Fqdn,
+			Owner:  giteaBaseNs,
+			Name:   repo1,
+			Branch: branch,
+		}
+		err := CommitYamlOnSpecifiedPath(repo, []byte(yaml), "custom-path/custom.yaml")
+		Expect(err).To(BeNil())
+
+		By("creating the test configmap on the cluster")
+		cm := &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace},
+			Data:       map[string]string{"test": "oui"},
+		}
+		Eventually(func() bool {
+			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+				cm,
+				metav1.CreateOptions{},
+			)
+			return err == nil
+		}, timeout, interval).Should(BeTrue())
 
 	})
 

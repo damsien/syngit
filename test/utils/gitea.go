@@ -36,10 +36,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	httpgit "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/goccy/go-yaml"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -457,7 +457,7 @@ func merge(repo Repo, sourceBranch string, targetBranch string) error {
 	return nil
 }
 
-func commitObjectOnSpecifiedPath(repository Repo, obj runtime.Object, path string) error {
+func commitYamlOnSpecifiedPath(repository Repo, content []byte, path string) error {
 	repoUrl := fmt.Sprintf("https://%s/%s/%s.git", repository.Fqdn, repository.Owner, repository.Name)
 
 	repo, err := git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
@@ -478,11 +478,6 @@ func commitObjectOnSpecifiedPath(repository Repo, obj runtime.Object, path strin
 	wt, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("failed to get worktree: %w", err)
-	}
-
-	content, err := yaml.Marshal(obj)
-	if err != nil {
-		return fmt.Errorf("failed to marshal object: %w", err)
 	}
 
 	fs := wt.Filesystem

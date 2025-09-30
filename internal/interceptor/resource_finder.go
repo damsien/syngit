@@ -1,13 +1,16 @@
 package interceptor
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
-	"github.com/goccy/go-yaml"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	yaml "k8s.io/apimachinery/pkg/util/yaml"
+	syaml "sigs.k8s.io/yaml"
 )
 
 type ResourceFinder struct {
@@ -106,34 +109,9 @@ func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) err
 		return fmt.Errorf("failed to close the %s file in the worktree: %w", path, err)
 	}
 
-	docs := strings.Split(string(content), "---")
-
-	targetGVK := fmt.Sprintf("%s/%s", rf.SearchedGVK.Group, rf.SearchedGVK.Version)
-	if rf.SearchedGVK.Group == "" {
-		// Core API group
-		targetGVK = rf.SearchedGVK.Version
-	}
-
-	for i, doc := range docs {
-		doc = strings.TrimSpace(doc)
-		if doc == "" {
-			continue
-		}
-
-		var obj GenericK8sObject
-		if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
-			return fmt.Errorf("failed to unmarshal doc: %w", err)
-		}
-
-		if strings.ToLower(obj.Kind) == rf.SearchedGVK.Resource &&
-			obj.APIVersion == targetGVK &&
-			obj.Name == rf.SearchedName &&
-			(rf.SearchedNamespace == "" || obj.Namespace == rf.SearchedNamespace) {
-
-			docs[i] = strings.TrimSpace(rf.Content)
-			rf.paths = append(rf.paths, path)
-			break
-		}
+	out, err := rf.replaceResourceIfFound(content)
+	if err != nil {
+		return err
 	}
 
 	file, err := wt.Filesystem.Create(path)
@@ -141,8 +119,7 @@ func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) err
 		return fmt.Errorf("failed to create the %s file in the worktree: %w", path, err)
 	}
 
-	finalContent := []byte(strings.Join(docs, "\n---\n") + "\n")
-	_, err = file.Write(finalContent)
+	_, err = file.Write(out)
 	if err != nil {
 		return fmt.Errorf("failed to write the %s file in the worktree: %w", path, err)
 	}
@@ -152,4 +129,73 @@ func (rf *ResourceFinder) checkInsertResource(wt *git.Worktree, path string) err
 	}
 
 	return nil
+}
+
+func (rf *ResourceFinder) replaceResourceIfFound(content []byte) ([]byte, error) {
+	targetGVK := fmt.Sprintf("%s/%s", rf.SearchedGVK.Group, rf.SearchedGVK.Version)
+	if rf.SearchedGVK.Group == "" {
+		targetGVK = rf.SearchedGVK.Version
+	}
+
+	var docs [][]byte
+
+	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(content), 4096)
+
+	for {
+		var raw map[string]interface{}
+		if err := decoder.Decode(&raw); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return []byte{}, fmt.Errorf("can't decode content: %w", err)
+		}
+		if len(raw) == 0 {
+			// skip empty docs
+			continue
+		}
+
+		// Simpler: convert map back to YAML
+		y, err := syaml.Marshal(raw)
+		if err != nil {
+			return []byte{}, fmt.Errorf("marshal back failed: %w", err)
+		}
+		docs = append(docs, y)
+	}
+
+	// Walk docs and check metadata
+	for i, doc := range docs {
+		var raw map[string]interface{}
+		if err := yaml.Unmarshal(doc, &raw); err != nil {
+			return []byte{}, fmt.Errorf("unmarshal failed: %w", err)
+		}
+
+		apiVersion, _ := raw["apiVersion"].(string)
+		k, _ := raw["kind"].(string)
+
+		md, _ := raw["metadata"].(map[string]interface{})
+		n, _ := md["name"].(string)
+		ns, _ := md["namespace"].(string)
+
+		if apiVersion == targetGVK &&
+			strings.ToLower(k) == rf.SearchedGVK.Resource &&
+			n == rf.SearchedName &&
+			(rf.SearchedNamespace == "" || ns == rf.SearchedNamespace) {
+			docs[i] = bytes.TrimSpace(content)
+			break
+		}
+	}
+
+	// Reassemble docs with proper separators
+	var out strings.Builder
+	for i, d := range docs {
+		if i > 0 {
+			out.WriteString("---\n")
+		}
+		out.Write(d)
+		if !strings.HasSuffix(string(d), "\n") {
+			out.WriteString("\n")
+		}
+	}
+
+	return []byte(out.String()), nil
 }

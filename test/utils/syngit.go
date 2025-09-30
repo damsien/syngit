@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os/exec"
 
-	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 )
 
 func Merge(repo Repo, sourceBranch string, targetBranch string) error {
@@ -137,5 +137,13 @@ func GetRepoTree(repo Repo) ([]Tree, error) {
 }
 
 func CommitObjectOnSpecifiedPath(repo Repo, obj runtime.Object, path string) error {
-	return commitObjectOnSpecifiedPath(repo, obj, path)
+	content, err := yaml.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal object: %w", err)
+	}
+	return commitYamlOnSpecifiedPath(repo, content, path)
+}
+
+func CommitYamlOnSpecifiedPath(repo Repo, content []byte, path string) error {
+	return commitYamlOnSpecifiedPath(repo, content, path)
 }
