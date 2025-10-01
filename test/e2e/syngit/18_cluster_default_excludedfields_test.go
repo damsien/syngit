@@ -171,11 +171,11 @@ var _ = Describe("18 Cluster default excluded fields test", func() {
 		configmaps, err := GetObjectInRepo(*repo, tree, cm)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(configmaps)).To(Equal(1))
-		var parsed map[interface{}]interface{}
+		var parsed map[string]interface{}
 		err = yaml.Unmarshal(configmaps[0].Content, &parsed)
 		Expect(err).ToNot(HaveOccurred())
-		metadata := parsed["metadata"].(map[interface{}]interface{})
-		annotations := metadata["annotations"].(map[interface{}]interface{})
+		metadata := parsed["metadata"].(map[string]interface{})
+		annotations := metadata["annotations"].(map[string]interface{})
 		annotation1 := annotations[annotation1Key]
 		Expect(annotation1).To(BeNil())
 		annotation2 := annotations[annotation2Key]

@@ -34,6 +34,7 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	httpgit "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -494,7 +495,11 @@ func commitYamlOnSpecifiedPath(repository Repo, content []byte, path string) err
 		return fmt.Errorf("failed to add file: %w", err)
 	}
 
-	_, err = wt.Commit("Update "+path, &git.CommitOptions{})
+	_, err = wt.Commit("Update "+path, &git.CommitOptions{
+		Author: &object.Signature{
+			Name: string(Luffy),
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
