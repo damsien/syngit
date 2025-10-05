@@ -293,6 +293,7 @@ chart-install: ## Install the latest chart version listed in the charts/ folder 
 chart-install-providers: ## Install the latest chart version listed in the charts/ folder with 3 replicas.
 	kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_CHART_VERSION)/cert-manager.crds.yaml"
 	helm install syngit charts/$(LATEST_CHART) -n syngit --create-namespace \
+		--timeout 15m \
 		--set controller.image.prefix=local \
 		--set controller.image.name=syngit-controller \
 		--set controller.image.tag=dev \
