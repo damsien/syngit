@@ -3,6 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ .Release.Name }}-manager-role
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: {{ .Release.Name }}
