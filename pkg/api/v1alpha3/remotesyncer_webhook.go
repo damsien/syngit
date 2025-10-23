@@ -91,10 +91,10 @@ func (r *RemoteSyncerSpec) searchForDuplicates(gvrns []GroupVersionResourceName)
 	duplicates := make([]*schema.GroupVersionResource, 0)
 
 	for _, item := range gvrns {
-		if _, ok := seen[item.GroupVersionResource.String()]; ok {
+		if _, ok := seen[item.String()]; ok {
 			duplicates = append(duplicates, item.GroupVersionResource)
 		}
-		seen[item.GroupVersionResource.String()] = true
+		seen[item.String()] = true
 	}
 
 	return duplicates

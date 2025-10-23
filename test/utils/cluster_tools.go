@@ -39,7 +39,10 @@ func Run(cmd *exec.Cmd) ([]byte, error) {
 
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	command := strings.Join(cmd.Args, " ")
-	fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
+	_, err := fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
+	if err != nil {
+		return nil, fmt.Errorf("%s failed with error: (%v)", command, err)
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return output, fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
