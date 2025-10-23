@@ -128,7 +128,6 @@ jobs:
 
   test-helm-upgrade:
     name: Helm upgrade test
-    needs: test-helm-install
     permissions: {}
     runs-on: ubuntu-latest
 
