@@ -119,8 +119,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y make
 
-    - name: Run tests
-      run: make test-chart-install
+    - uses: nick-fields/retry@14672906e672a08bd6eeb15720e9ed3ce869cdd4  #v2
+      name: Run tests
+      with:
+        timeout_minutes: 5
+        max_attempts: 3
+        command: make test-chart-install
 
   test-helm-upgrade:
     name: Helm upgrade test
@@ -153,6 +157,6 @@ jobs:
     - uses: nick-fields/retry@14672906e672a08bd6eeb15720e9ed3ce869cdd4  #v2
       name: Run tests
       with:
-        timeout_minutes: 15
+        timeout_minutes: 10
         max_attempts: 3
         command: make test-chart-upgrade
