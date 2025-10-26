@@ -17,8 +17,10 @@ limitations under the License.
 package e2e_syngit
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"flag"
 	"fmt"
 	"net"
@@ -431,13 +433,8 @@ func rbacSetup(ctx context.Context) {
 
 // namespaceSetup creates the test namespace and the secrets for the users to connect to the gitea platforms.
 func namespaceSetup(ctx context.Context) {
-	By("setting the default client successfully")
-	sClient = &SyngitTestUsersClientset{}
-	err := sClient.Initialize(cfg)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
 	By("creating the syngit namespace")
-	_, err = sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
+	_, err := sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
 		metav1.CreateOptions{},
 	)
@@ -487,8 +484,7 @@ func isGiteaInstalled() bool {
 	return err == nil
 }
 
-var _ = BeforeSuite(func() {
-	ctx := context.TODO()
+var _ = SynchronizedBeforeSuite(func() []byte {
 	log.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	if setupType == "full" {
@@ -500,9 +496,6 @@ var _ = BeforeSuite(func() {
 	}
 
 	setupManager()
-	namespaceSetup(ctx)
-	rbacSetup(ctx)
-	createCredentials(ctx)
 
 	By("retrieving the gitea urls")
 	var err error
@@ -512,6 +505,48 @@ var _ = BeforeSuite(func() {
 	gitP2Fqdn, err = GetGiteaURL(os.Getenv("PLATFORM2"))
 	Expect(err).NotTo(HaveOccurred())
 	fmt.Printf("  Gitea URL for %s: %s\n", os.Getenv("PLATFORM2"), gitP2Fqdn)
+
+	data := struct {
+		GitP1Fqdn string
+		GitP2Fqdn string
+		Cfg       rest.Config
+	}{
+		GitP1Fqdn: gitP1Fqdn,
+		GitP2Fqdn: gitP2Fqdn,
+		Cfg:       *cfg,
+	}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(data)
+	Expect(err).NotTo(HaveOccurred())
+
+	return buf.Bytes()
+}, func(data []byte) {
+	ctx := context.TODO()
+
+	var sharedData struct {
+		GitP1Fqdn string
+		GitP2Fqdn string
+		Cfg       rest.Config
+	}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&sharedData)
+	Expect(err).NotTo(HaveOccurred())
+
+	gitP1Fqdn = sharedData.GitP1Fqdn
+	gitP2Fqdn = sharedData.GitP2Fqdn
+	restConfig := sharedData.Cfg
+
+	By("setting the default client successfully")
+	sClient = &SyngitTestUsersClientset{}
+	err = sClient.Initialize(&restConfig)
+
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	namespaceSetup(ctx)
+	rbacSetup(ctx)
+	createCredentials(ctx)
 })
 
 // uninstallSetup deletes the kind cluster it did not exist before and uninstall the gitea charts.
@@ -538,6 +573,8 @@ func deleteRbac(ctx context.Context) {
 	Expect(err).NotTo(HaveOccurred())
 	err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, devopsRoleBindingName, metav1.DeleteOptions{})
 	Expect(err).NotTo(HaveOccurred())
+	fmt.Println("GOING TO DELETE")
+	fmt.Println(Admin)
 	err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, limitedDevopsRoleBindingName, metav1.DeleteOptions{}) //nolint:lll
 	Expect(err).NotTo(HaveOccurred())
 
@@ -550,7 +587,7 @@ func deleteRepos() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-var _ = AfterSuite(func() {
+var _ = SynchronizedAfterSuite(func() {}, func() {
 	ctx := context.TODO()
 
 	deleteRbac(ctx)
