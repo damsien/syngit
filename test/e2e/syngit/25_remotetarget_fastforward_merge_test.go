@@ -35,6 +35,7 @@ var _ = Describe("25 Test fast-forward merge", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace                      = "test-25"
 		remoteUserLuffyName            = "remoteuser-luffy"
 		remoteSyncerName1              = "remotesyncer-test25.1"
 		remoteSyncerName2              = "remotesyncer-test25.2"

@@ -35,6 +35,7 @@ var _ = Describe("29 Add & remove patterns tests", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace           = "test-29"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncerName1   = "remotesyncer-test29.2"
 		remoteSyncerName2   = "remotesyncer-test29.2"

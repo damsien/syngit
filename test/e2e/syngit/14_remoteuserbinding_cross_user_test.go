@@ -17,6 +17,8 @@ limitations under the License.
 package e2e_syngit
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta3"
@@ -29,6 +31,7 @@ import (
 var _ = Describe("14 RemoteUser RBAC cross user test", func() {
 
 	const (
+		namespace             = "test-14"
 		remoteUserLuffyName   = "remoteuser-luffy"
 		remoteUserChopperName = "remoteuser-chopper"
 	)
@@ -54,6 +57,7 @@ var _ = Describe("14 RemoteUser RBAC cross user test", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

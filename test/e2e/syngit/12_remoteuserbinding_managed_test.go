@@ -31,6 +31,7 @@ import (
 var _ = Describe("12 RemoteUserBinding managed by checker", func() {
 
 	const (
+		namespace           = "test-12"
 		remoteUserLuffyName = "remoteuser-luffy"
 	)
 

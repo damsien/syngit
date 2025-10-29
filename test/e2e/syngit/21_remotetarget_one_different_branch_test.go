@@ -34,6 +34,7 @@ var _ = Describe("21 RemoteTarget one different branch", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace           = "test-21"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncerName1   = "remotesyncer-test21.1"
 		remoteSyncerName2   = "remotesyncer-test21.2"

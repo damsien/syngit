@@ -35,6 +35,7 @@ var _ = Describe("02 CommitOnly a ConfigMap", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace           = "test-02"
 		cmName              = "test-cm2"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncerName    = "remotesyncer-test2"

@@ -135,13 +135,13 @@ COVERPKG = $(shell go list ./... | grep -v 'test' | grep -v -E "$(DEPREACTED_API
 test-behavior: kind-create-cluster
 test-behavior: export KUBECONFIG=${KIND_KUBECONFIG_PATH}
 test-behavior: ginkgo cleanup-tests ## Install the test env (gitea). Run the behavior tests against a Kind k8s instance that is spun up. Cleanup when finished.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -timeout 25m -v -cover -coverpkg=$(COVERPKG) -coverprofile=coverage.txt ./test/e2e/syngit
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -p -timeout 25m -v -cover -coverpkg=$(COVERPKG) --procs=2 -coverprofile=coverage.txt ./test/e2e/syngit
 
 .PHONY: fast-behavior
 fast-behavior: kind-create-cluster
 fast-behavior: export KUBECONFIG=${KIND_KUBECONFIG_PATH}
 fast-behavior: ginkgo ## Install the test env if not already installed. Run the behavior tests against a Kind k8s instance that is spun up. Does not cleanup when finished (meant to be run often).
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -timeout 25m -v -ginkgo.v -cover -coverpkg=$(COVERPKG) --procs=5 -setup fast ./test/e2e/syngit
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -timeout 25m -v -cover -coverpkg=$(COVERPKG) --procs=5 ./test/e2e/syngit -- -setup fast
 
 .PHONY: test-selected
 test-selected: kind-create-cluster
@@ -150,7 +150,7 @@ test-selected: ## Install the test env if not already installed. Run only one se
 	@bash -c ' \
 		TEST_NUMBER=$(TEST_NUMBER) ./hack/tests/run_one_test.sh $(TEST_NUMBER); \
 		trap "./hack/tests/reset_test.sh" EXIT; \
-		KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./test/e2e/syngit -v -ginkgo.v -cover -coverpkg=$(COVERPKG) -setup fast; \
+		KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -cover -coverpkg=$(COVERPKG)  ./test/e2e/syngit -- -setup fast; \
 	'
 
 .PHONY: cleanup-tests

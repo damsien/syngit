@@ -28,6 +28,7 @@ import (
 var _ = Describe("19 RemoteTarget same repo & branch between target and upstream test", func() {
 
 	const (
+		namespace        = "test-19"
 		remoteTargetName = "remotetarget-test19"
 		repo             = "https://my-server.com/my-upstream-repo.git"
 		differentRepo    = "https://my-server.com/my-different-repo.git"

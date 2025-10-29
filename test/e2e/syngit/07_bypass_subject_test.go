@@ -34,6 +34,8 @@ import (
 var _ = Describe("07 Subject bypasses interception", func() {
 
 	const (
+		namespace1          = "test-07-1"
+		namespace2          = "test-07-2"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncer1Name   = "remotesyncer-test7.1"
 		remoteSyncer2Name   = "remotesyncer-test7.2"
@@ -51,7 +53,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -74,7 +76,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncer1Name,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -119,11 +121,11 @@ var _ = Describe("07 Subject bypasses interception", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName1, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName1, Namespace: namespace1},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace1).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
@@ -144,7 +146,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		By("checking that the configmap is present on the cluster")
 		nnCm := types.NamespacedName{
 			Name:      cmName1,
-			Namespace: namespace,
+			Namespace: namespace1,
 		}
 		getCm := &corev1.ConfigMap{}
 
@@ -164,7 +166,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -187,7 +189,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncer2Name,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -232,11 +234,11 @@ var _ = Describe("07 Subject bypasses interception", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace2},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace2).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
@@ -257,7 +259,7 @@ var _ = Describe("07 Subject bypasses interception", func() {
 		By("checking that the configmap is present on the cluster")
 		nnCm := types.NamespacedName{
 			Name:      cmName2,
-			Namespace: namespace,
+			Namespace: namespace2,
 		}
 		getCm := &corev1.ConfigMap{}
 

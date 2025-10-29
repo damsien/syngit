@@ -35,6 +35,7 @@ var _ = Describe("05 Use a default user", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace               = "test-05"
 		cmName                  = "test-cm5"
 		remoteUserLuffyName     = "remoteuser-luffy"
 		remoteUserChopperName   = "remoteuser-chopper"

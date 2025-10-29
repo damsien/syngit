@@ -35,6 +35,7 @@ var _ = Describe("18 Cluster default excluded fields test", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace           = "test-18"
 		cmName1             = "test-cm18"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncerName    = "remotesyncer-test18"

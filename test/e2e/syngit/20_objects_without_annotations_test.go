@@ -35,6 +35,7 @@ var _ = Describe("20 All syngit objects without annotations test", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace                  = "test-20"
 		remoteUserLuffyName        = "remoteuser-luffy"
 		remoteUserBindingLuffyName = "remoteuserbinding-luffy"
 		remoteTargetName           = "remotetarget-test20"

@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -40,6 +41,7 @@ import (
 	. "github.com/syngit-org/syngit/test/utils" //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -62,8 +64,8 @@ const (
 )
 
 const (
+	testFilesDir         = "test/e2e/syngit"
 	operatorNamespace    = "syngit"
-	namespace            = "test"
 	defaultDeniedMessage = "DENIED ON PURPOSE"
 	x509ErrorMessage     = "x509: certificate signed by unknown authority"
 	notPresentOnCluser   = "not found"
@@ -185,6 +187,8 @@ func setupManager() {
 	Expect(errTest).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
+	staticCfg = *cfg
+
 	errScheme := syngit.AddToScheme(scheme.Scheme)
 	Expect(errScheme).NotTo(HaveOccurred())
 
@@ -289,203 +293,18 @@ func setupManager() {
 	}).Should(Succeed())
 }
 
-// rbacSetup creates the RBAC permissions of the k8s users (listed in the mock-users.go Users array).
-func rbacSetup(ctx context.Context) {
-
-	By("creating users with RBAC cluster admin for Platform Engineer")
-	_, err := sClient.KAs(Admin).RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: platformEngineerRoleBindingName,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:     "User", // Represents a real user
-				Name:     string(Admin),
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "ClusterRole",
-			Name:     "cluster-admin",
-			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}, metav1.CreateOptions{})
-	Expect(err).NotTo(HaveOccurred())
-
-	By("creating admin RoleBinding for DevOps users")
-	_, err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Create(ctx, &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: devopsRoleBindingName,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:     "User", // Represents a real user
-				Name:     string(Luffy),
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-			{
-				Kind:     "User", // Represents a real user
-				Name:     string(Chopper),
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-			{
-				Kind:     "User", // Represents a real user
-				Name:     string(Sanji),
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "ClusterRole",
-			Name:     "cluster-admin",
-			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}, metav1.CreateOptions{})
-	Expect(err).NotTo(HaveOccurred())
-
-	By("validating RBAC creation for DevOps")
-	devopsRB, err := sClient.KAs(Admin).RbacV1().RoleBindings(namespace).
-		Get(ctx, devopsRoleBindingName, metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
-		Kind:     "User",
-		Name:     string(Luffy),
-		APIGroup: "rbac.authorization.k8s.io",
-	}))
-	Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
-		Kind:     "User",
-		Name:     string(Chopper),
-		APIGroup: "rbac.authorization.k8s.io",
-	}))
-	Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
-		Kind:     "User",
-		Name:     string(Sanji),
-		APIGroup: "rbac.authorization.k8s.io",
-	}))
-
-	By("creating limited Role for limited DevOps")
-	_, err = sClient.KAs(Admin).RbacV1().Roles(namespace).Create(ctx, &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: limitedDevopsRoleName,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				Verbs:     []string{"create"},
-				APIGroups: []string{"", "syngit.io"},
-				Resources: []string{"secrets", "remoteusers", "remoteuserbindings"},
-			},
-			{
-				Verbs:         []string{"get", "list", "watch"},
-				APIGroups:     []string{""},
-				Resources:     []string{"secrets"},
-				ResourceNames: []string{string(Brook) + "-creds"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "update", "delete"},
-				APIGroups: []string{"syngit.io"},
-				Resources: []string{"remotesyncers"},
-			},
-			{
-				Verbs:         []string{"get", "list", "watch", "update", "delete"},
-				APIGroups:     []string{"syngit.io"},
-				Resources:     []string{"remoteusers"},
-				ResourceNames: []string{"remoteuser-brook"},
-			},
-			{
-				Verbs:         []string{"get", "list", "watch", "update", "delete"},
-				APIGroups:     []string{"syngit.io"},
-				Resources:     []string{"remoteuserbindings"},
-				ResourceNames: []string{"remoteuserbinding-brook"},
-			},
-		},
-	}, metav1.CreateOptions{})
-	Expect(err).NotTo(HaveOccurred())
-
-	By("creating ClusterRoleBinding for limited DevOps")
-	_, err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Create(ctx, &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: limitedDevopsRoleBindingName,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:     "User", // Represents a real user
-				Name:     string(Brook),
-				APIGroup: "rbac.authorization.k8s.io",
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "Role",
-			Name:     limitedDevopsRoleName,
-			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}, metav1.CreateOptions{})
-	Expect(err).NotTo(HaveOccurred())
-
-	By("validating RBAC creation for the limited DevOps")
-	limitedDevopsRB, err := sClient.KAs(Admin).RbacV1().RoleBindings(namespace).
-		Get(ctx, limitedDevopsRoleBindingName, metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(limitedDevopsRB.Subjects).To(ContainElement(rbacv1.Subject{
-		Kind:     "User",
-		Name:     string(Brook),
-		APIGroup: "rbac.authorization.k8s.io",
-	}))
-}
-
-// namespaceSetup creates the test namespace and the secrets for the users to connect to the gitea platforms.
-func namespaceSetup(ctx context.Context) {
-	By("creating the syngit namespace")
-	_, err := sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
-		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
-		metav1.CreateOptions{},
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	By("creating the test namespace")
-	_, err = sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
-		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}},
-		metav1.CreateOptions{},
-	)
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func createCredentials(ctx context.Context) {
-	for _, username := range Users {
-		By(fmt.Sprintf("creating the Secret creds (to connect to jupyter & saturn) for %s", username))
-		secretName := string(username) + "-creds"
-		secretCreds := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName,
-				Namespace: namespace,
-			},
-			StringData: map[string]string{
-				"username": string(username),
-				"password": string(username) + "-pwd",
-			},
-			Type: "kubernetes.io/basic-auth",
-		}
-		_, err := sClient.KAs(username).CoreV1().Secrets(namespace).Create(ctx,
-			secretCreds,
-			metav1.CreateOptions{},
-		)
-		Expect(err).NotTo(HaveOccurred())
-	}
-}
-
-// isGitlabInstalled checks if the gitea charts are installed on the 2 platform's namespace.
-func isGiteaInstalled() bool {
-	By("checking the gitea installation")
-	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM1"))
-	_, err := Run(cmd)
+func countItNodesInFile(filePath string) (int, error) {
+	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return false
+		return 0, err
 	}
-	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM2"))
-	_, err = Run(cmd)
-	return err == nil
+
+	return strings.Count(string(content), "It("), nil
 }
 
-var _ = SynchronizedBeforeSuite(func() []byte {
+func BeforeSuiteSetup() []byte {
 	log.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	ctx := context.TODO()
 
 	if setupType == "full" {
 		setupCluster()
@@ -506,6 +325,41 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 	fmt.Printf("  Gitea URL for %s: %s\n", os.Getenv("PLATFORM2"), gitP2Fqdn)
 
+	By("setting the default client successfully")
+	sClient = &SyngitTestUsersClientset{}
+	err = sClient.Initialize(cfg)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	By("creating the syngit namespace")
+	_, err = sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: operatorNamespace}},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+	}
+
+	files, err := os.ReadDir(testFilesDir)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	namespaces := []string{}
+	for _, file := range files {
+		extractedNumber := strings.Split(file.Name(), "_")[0]
+		_, err := strconv.ParseInt(extractedNumber, 10, 0)
+		if err == nil {
+			it, err := countItNodesInFile(fmt.Sprintf("%s/%s", testFilesDir, file.Name()))
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			for i, _ := range make([]int, it) {
+				namespaces = append(namespaces, fmt.Sprintf("test-%s-%d", extractedNumber, i+1))
+			}
+		}
+	}
+
+	namespacesSetup(ctx, namespaces)
+	rbacSetup(ctx, namespaces)
+	createCredentials(ctx, namespaces)
+
 	data := struct {
 		GitP1Fqdn string
 		GitP2Fqdn string
@@ -522,32 +376,225 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	return buf.Bytes()
-}, func(data []byte) {
-	ctx := context.TODO()
+}
 
-	var sharedData struct {
-		GitP1Fqdn string
-		GitP2Fqdn string
-		Cfg       rest.Config
+// rbacSetup creates the RBAC permissions of the k8s users (listed in the mock-users.go Users array).
+func rbacSetup(ctx context.Context, namespaces []string) {
+
+	By("creating users with RBAC cluster admin for Platform Engineer")
+	_, err := sClient.KAs(Admin).RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: platformEngineerRoleBindingName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:     "User", // Represents a real user
+				Name:     string(Admin),
+				APIGroup: "rbac.authorization.k8s.io",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 	}
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&sharedData)
-	Expect(err).NotTo(HaveOccurred())
 
-	gitP1Fqdn = sharedData.GitP1Fqdn
-	gitP2Fqdn = sharedData.GitP2Fqdn
-	restConfig := sharedData.Cfg
+	By("creating admin RoleBinding for DevOps users")
+	for _, namespace := range namespaces {
+		_, err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Create(ctx, &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: devopsRoleBindingName,
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:     "User", // Represents a real user
+					Name:     string(Luffy),
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+				{
+					Kind:     "User", // Represents a real user
+					Name:     string(Chopper),
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+				{
+					Kind:     "User", // Represents a real user
+					Name:     string(Sanji),
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+			},
+			RoleRef: rbacv1.RoleRef{
+				Kind:     "ClusterRole",
+				Name:     "cluster-admin",
+				APIGroup: "rbac.authorization.k8s.io",
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+	}
 
-	By("setting the default client successfully")
-	sClient = &SyngitTestUsersClientset{}
-	err = sClient.Initialize(&restConfig)
+	By("validating RBAC creation for DevOps")
+	for _, namespace := range namespaces {
+		devopsRB, err := sClient.KAs(Admin).RbacV1().RoleBindings(namespace).
+			Get(ctx, devopsRoleBindingName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
+			Kind:     "User",
+			Name:     string(Luffy),
+			APIGroup: "rbac.authorization.k8s.io",
+		}))
+		Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
+			Kind:     "User",
+			Name:     string(Chopper),
+			APIGroup: "rbac.authorization.k8s.io",
+		}))
+		Expect(devopsRB.Subjects).To(ContainElement(rbacv1.Subject{
+			Kind:     "User",
+			Name:     string(Sanji),
+			APIGroup: "rbac.authorization.k8s.io",
+		}))
+	}
 
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	namespaceSetup(ctx)
-	rbacSetup(ctx)
-	createCredentials(ctx)
-})
+	By("creating limited Role for limited DevOps")
+	for _, namespace := range namespaces {
+		_, err = sClient.KAs(Admin).RbacV1().Roles(namespace).Create(ctx, &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: limitedDevopsRoleName,
+			},
+			Rules: []rbacv1.PolicyRule{
+				{
+					Verbs:     []string{"create"},
+					APIGroups: []string{"", "syngit.io"},
+					Resources: []string{"secrets", "remoteusers", "remoteuserbindings"},
+				},
+				{
+					Verbs:         []string{"get", "list", "watch"},
+					APIGroups:     []string{""},
+					Resources:     []string{"secrets"},
+					ResourceNames: []string{string(Brook) + "-creds"},
+				},
+				{
+					Verbs:     []string{"create", "get", "list", "watch", "update", "delete"},
+					APIGroups: []string{"syngit.io"},
+					Resources: []string{"remotesyncers"},
+				},
+				{
+					Verbs:         []string{"get", "list", "watch", "update", "delete"},
+					APIGroups:     []string{"syngit.io"},
+					Resources:     []string{"remoteusers"},
+					ResourceNames: []string{"remoteuser-brook"},
+				},
+				{
+					Verbs:         []string{"get", "list", "watch", "update", "delete"},
+					APIGroups:     []string{"syngit.io"},
+					Resources:     []string{"remoteuserbindings"},
+					ResourceNames: []string{"remoteuserbinding-brook"},
+				},
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+	}
+
+	By("creating ClusterRoleBinding for limited DevOps")
+	for _, namespace := range namespaces {
+		_, err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Create(ctx, &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: limitedDevopsRoleBindingName,
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:     "User", // Represents a real user
+					Name:     string(Brook),
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+			},
+			RoleRef: rbacv1.RoleRef{
+				Kind:     "Role",
+				Name:     limitedDevopsRoleName,
+				APIGroup: "rbac.authorization.k8s.io",
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+	}
+
+	By("validating RBAC creation for the limited DevOps")
+	for _, namespace := range namespaces {
+		limitedDevopsRB, err := sClient.KAs(Admin).RbacV1().RoleBindings(namespace).
+			Get(ctx, limitedDevopsRoleBindingName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(limitedDevopsRB.Subjects).To(ContainElement(rbacv1.Subject{
+			Kind:     "User",
+			Name:     string(Brook),
+			APIGroup: "rbac.authorization.k8s.io",
+		}))
+	}
+}
+
+// namespaceSetup creates the test namespace and the secrets for the users to connect to the gitea platforms.
+func namespacesSetup(ctx context.Context, namespaces []string) {
+	for _, ns := range namespaces {
+		By(fmt.Sprintf("creating the %s namespace", ns))
+		_, err := sClient.KAs(Admin).CoreV1().Namespaces().Create(ctx,
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   ns,
+					Labels: map[string]string{"type": "test"},
+				}},
+			metav1.CreateOptions{},
+		)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+	}
+}
+
+func createCredentials(ctx context.Context, namespaces []string) {
+	for _, namespace := range namespaces {
+		for _, username := range Users {
+			By(fmt.Sprintf("creating the Secret creds (to connect to jupyter & saturn) for %s", username))
+			secretName := string(username) + "-creds"
+			secretCreds := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretName,
+					Namespace: namespace,
+				},
+				StringData: map[string]string{
+					"username": string(username),
+					"password": string(username) + "-pwd",
+				},
+				Type: "kubernetes.io/basic-auth",
+			}
+			_, err := sClient.KAs(username).CoreV1().Secrets(namespace).Create(ctx,
+				secretCreds,
+				metav1.CreateOptions{},
+			)
+			if err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+		}
+	}
+}
+
+// isGitlabInstalled checks if the gitea charts are installed on the 2 platform's namespace.
+func isGiteaInstalled() bool {
+	By("checking the gitea installation")
+	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM1"))
+	_, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+	cmd = exec.Command("helm", "status", "gitea", "-n", os.Getenv("PLATFORM2"))
+	_, err = Run(cmd)
+	return err == nil
+}
 
 // uninstallSetup deletes the kind cluster it did not exist before and uninstall the gitea charts.
 func uninstallSetup() {
@@ -565,19 +612,129 @@ func uninstallSetup() {
 
 }
 
-// deleteRbac deletes the RBAC permissions of the k8s users.
-func deleteRbac(ctx context.Context) {
+func deleteRbac(ctx context.Context, namespaces []string) {
+	for _, namespace := range namespaces {
+		By(fmt.Sprintf("deleting the RBACs for the %s ns", namespace))
+		err := sClient.KAs(Admin).RbacV1().Roles(namespace).Delete(ctx, limitedDevopsRoleName, metav1.DeleteOptions{})
+		if err != nil {
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		}
+		err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, devopsRoleBindingName, metav1.DeleteOptions{})
+		if err != nil {
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		}
+		err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, limitedDevopsRoleBindingName, metav1.DeleteOptions{}) //nolint:lll
+		if err != nil {
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		}
+	}
+}
 
-	By("deleting the RBACs")
-	err := sClient.KAs(Admin).RbacV1().Roles(namespace).Delete(ctx, limitedDevopsRoleName, metav1.DeleteOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, devopsRoleBindingName, metav1.DeleteOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	fmt.Println("GOING TO DELETE")
-	fmt.Println(Admin)
-	err = sClient.KAs(Admin).RbacV1().RoleBindings(namespace).Delete(ctx, limitedDevopsRoleBindingName, metav1.DeleteOptions{}) //nolint:lll
-	Expect(err).NotTo(HaveOccurred())
+func deleteResources(ctx context.Context, namespaces []string) {
 
+	for _, namespace := range namespaces {
+		By(fmt.Sprintf("deleting the remotetargets from the %s ns", namespace))
+		remoteTargets := &syngit.RemoteTargetList{}
+		err := sClient.As(Admin).List(namespace, remoteTargets)
+		if err == nil {
+			for _, remotetarget := range remoteTargets.Items {
+				nnRub := types.NamespacedName{
+					Name:      remotetarget.Name,
+					Namespace: remotetarget.Namespace,
+				}
+				rub := &syngit.RemoteTarget{}
+				err = sClient.As(Admin).Get(nnRub, rub)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(func() bool {
+					err := sClient.As(Admin).Delete(rub)
+					return err == nil
+				}, timeout, interval).Should(BeTrue())
+			}
+		}
+
+		By(fmt.Sprintf("deleting the remotesyncers from the %s ns", namespace))
+		remoteSyncers := &syngit.RemoteSyncerList{}
+		err = sClient.As(Admin).List(namespace, remoteSyncers)
+		if err == nil {
+			for _, remotesyncer := range remoteSyncers.Items {
+				nnRs := types.NamespacedName{
+					Name:      remotesyncer.Name,
+					Namespace: remotesyncer.Namespace,
+				}
+				rs := &syngit.RemoteSyncer{}
+				err = sClient.As(Admin).Get(nnRs, rs)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(func() bool {
+					err := sClient.As(Admin).Delete(remotesyncer.DeepCopy())
+					return err == nil
+				}, timeout, interval).Should(BeTrue())
+			}
+		}
+
+		By(fmt.Sprintf("deleting the remoteuserbindings from the %s ns", namespace))
+		remoteUserBindings := &syngit.RemoteUserBindingList{}
+		err = sClient.As(Admin).List(namespace, remoteUserBindings)
+		if err == nil {
+			for _, remoteuserbinding := range remoteUserBindings.Items {
+				nnRub := types.NamespacedName{
+					Name:      remoteuserbinding.Name,
+					Namespace: remoteuserbinding.Namespace,
+				}
+				rub := &syngit.RemoteUserBinding{}
+				err = sClient.As(Admin).Get(nnRub, rub)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(func() bool {
+					err := sClient.As(Admin).Delete(rub)
+					return err == nil
+				}, timeout, interval).Should(BeTrue())
+			}
+		}
+
+		By(fmt.Sprintf("deleting the remoteusers from the %s ns", namespace))
+		remoteUsers := &syngit.RemoteUserList{}
+		err = sClient.As(Admin).List(namespace, remoteUsers)
+		if err == nil {
+			for _, remoteuser := range remoteUsers.Items {
+				nnRu := types.NamespacedName{
+					Name:      remoteuser.Name,
+					Namespace: remoteuser.Namespace,
+				}
+				ru := &syngit.RemoteUser{}
+				err = sClient.As(Admin).Get(nnRu, ru)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(func() bool {
+					err := sClient.As(Admin).Delete(ru)
+					return err == nil
+				}, timeout, interval).Should(BeTrue())
+			}
+		}
+
+		By(fmt.Sprintf("deleting the test configmaps from the %s ns", namespace))
+		cms, err := sClient.KAs(Admin).CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			for _, cm := range cms.Items {
+				if strings.HasPrefix(cm.Name, "test-") {
+					Eventually(func() bool {
+						err = sClient.KAs(Admin).CoreV1().ConfigMaps(namespace).Delete(ctx, cm.Name, metav1.DeleteOptions{})
+						return err == nil
+					}, timeout, interval).Should(BeTrue())
+				}
+			}
+		}
+
+		By(fmt.Sprintf("deleting the test secrets from the %s ns", namespace))
+		secrets, err := sClient.KAs(Admin).CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			for _, secret := range secrets.Items {
+				if strings.HasPrefix(secret.Name, "test-") {
+					Eventually(func() bool {
+						err = sClient.KAs(Admin).CoreV1().Secrets(namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
+						return err == nil
+					}, timeout, interval).Should(BeTrue())
+				}
+			}
+		}
+	}
 }
 
 func deleteRepos() {
@@ -587,10 +744,21 @@ func deleteRepos() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-var _ = SynchronizedAfterSuite(func() {}, func() {
+func AfterSuiteSetup() {
 	ctx := context.TODO()
 
-	deleteRbac(ctx)
+	ns, err := sClient.KAs(Admin).CoreV1().Namespaces().List(
+		ctx,
+		metav1.ListOptions{LabelSelector: "type=test"},
+	)
+	Expect(err).NotTo(HaveOccurred())
+	namespaces := make([]string, len(ns.Items))
+	for i, n := range ns.Items {
+		namespaces[i] = n.Name
+	}
+
+	deleteRbac(ctx, namespaces)
+	deleteResources(ctx, namespaces)
 
 	deleteRepos()
 
@@ -603,116 +771,49 @@ var _ = SynchronizedAfterSuite(func() {}, func() {
 	if setupType == "full" {
 		uninstallSetup()
 	}
+}
 
+var _ = SynchronizedBeforeSuite(func() []byte {
+	return BeforeSuiteSetup()
+}, func(specContext SpecContext, data []byte) {
+	var sharedData struct {
+		GitP1Fqdn string
+		GitP2Fqdn string
+		Cfg       rest.Config
+	}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&sharedData)
+	Expect(err).NotTo(HaveOccurred())
+
+	gitP1Fqdn = sharedData.GitP1Fqdn
+	gitP2Fqdn = sharedData.GitP2Fqdn
+	restConfig := sharedData.Cfg
+
+	By("setting the default client successfully")
+	sClient = &SyngitTestUsersClientset{}
+	err = sClient.Initialize(&restConfig)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	By("adding syngit to scheme")
+	// Add the previous apiVersion for conversion
+	err = syngitv1beta2.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	// Add the current apiVersion
+	err = syngit.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 })
 
-var _ = AfterEach(func() {
-	ctx := context.TODO()
+var staticCfg rest.Config
 
-	By(fmt.Sprintf("deleting the remotetargets from the %s ns", namespace))
-	remoteTargets := &syngit.RemoteTargetList{}
-	err := sClient.As(Admin).List(namespace, remoteTargets)
-	if err == nil {
-		for _, remotetarget := range remoteTargets.Items {
-			nnRub := types.NamespacedName{
-				Name:      remotetarget.Name,
-				Namespace: remotetarget.Namespace,
-			}
-			rub := &syngit.RemoteTarget{}
-			err = sClient.As(Admin).Get(nnRub, rub)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				err := sClient.As(Admin).Delete(rub)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-		}
-	}
+var _ = SynchronizedAfterSuite(func() {
+}, func() {
+	By("setting the default client successfully")
+	sClient = &SyngitTestUsersClientset{}
+	err := sClient.Initialize(&staticCfg)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	By(fmt.Sprintf("deleting the remotesyncers from the %s ns", namespace))
-	remoteSyncers := &syngit.RemoteSyncerList{}
-	err = sClient.As(Admin).List(namespace, remoteSyncers)
-	if err == nil {
-		for _, remotesyncer := range remoteSyncers.Items {
-			nnRs := types.NamespacedName{
-				Name:      remotesyncer.Name,
-				Namespace: remotesyncer.Namespace,
-			}
-			rs := &syngit.RemoteSyncer{}
-			err = sClient.As(Admin).Get(nnRs, rs)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				err := sClient.As(Admin).Delete(remotesyncer.DeepCopy())
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-		}
-	}
-
-	By(fmt.Sprintf("deleting the remoteuserbindings from the %s ns", namespace))
-	remoteUserBindings := &syngit.RemoteUserBindingList{}
-	err = sClient.As(Admin).List(namespace, remoteUserBindings)
-	if err == nil {
-		for _, remoteuserbinding := range remoteUserBindings.Items {
-			nnRub := types.NamespacedName{
-				Name:      remoteuserbinding.Name,
-				Namespace: remoteuserbinding.Namespace,
-			}
-			rub := &syngit.RemoteUserBinding{}
-			err = sClient.As(Admin).Get(nnRub, rub)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				err := sClient.As(Admin).Delete(rub)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-		}
-	}
-
-	By(fmt.Sprintf("deleting the remoteusers from the %s ns", namespace))
-	remoteUsers := &syngit.RemoteUserList{}
-	err = sClient.As(Admin).List(namespace, remoteUsers)
-	if err == nil {
-		for _, remoteuser := range remoteUsers.Items {
-			nnRu := types.NamespacedName{
-				Name:      remoteuser.Name,
-				Namespace: remoteuser.Namespace,
-			}
-			ru := &syngit.RemoteUser{}
-			err = sClient.As(Admin).Get(nnRu, ru)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				err := sClient.As(Admin).Delete(ru)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-		}
-	}
-
-	By(fmt.Sprintf("deleting the test configmaps from the %s ns", namespace))
-	cms, err := sClient.KAs(Admin).CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
-	if err == nil {
-		for _, cm := range cms.Items {
-			if strings.HasPrefix(cm.Name, "test-") {
-				Eventually(func() bool {
-					err = sClient.KAs(Admin).CoreV1().ConfigMaps(namespace).Delete(ctx, cm.Name, metav1.DeleteOptions{})
-					return err == nil
-				}, timeout, interval).Should(BeTrue())
-			}
-		}
-	}
-
-	By(fmt.Sprintf("deleting the test secrets from the %s ns", namespace))
-	secrets, err := sClient.KAs(Admin).CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
-	if err == nil {
-		for _, secret := range secrets.Items {
-			if strings.HasPrefix(secret.Name, "test-") {
-				Eventually(func() bool {
-					err = sClient.KAs(Admin).CoreV1().Secrets(namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
-					return err == nil
-				}, timeout, interval).Should(BeTrue())
-			}
-		}
-	}
-
-	deleteRepos()
-
+	AfterSuiteSetup()
 })
 
 // Wait3 sleeps for 3 seconds

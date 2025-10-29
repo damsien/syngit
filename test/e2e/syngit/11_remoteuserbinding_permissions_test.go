@@ -29,6 +29,8 @@ import (
 var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 
 	const (
+		namespace1                 = "test-11-1"
+		namespace2                 = "test-11-2"
 		remoteUserBrookName        = "remoteuser-brook"
 		remoteUserBindingBrookName = "remoteuserbinding-brook"
 	)
@@ -40,7 +42,7 @@ var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace1,
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",
@@ -59,7 +61,7 @@ var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 		remoteUserBindingBrook := &syngit.RemoteUserBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBindingBrookName,
-				Namespace: namespace,
+				Namespace: namespace1,
 			},
 			Spec: syngit.RemoteUserBindingSpec{
 				RemoteUserRefs: []corev1.ObjectReference{
@@ -83,7 +85,7 @@ var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace2,
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",
@@ -102,7 +104,7 @@ var _ = Describe("11 RemoteUserBinding permissions checker", func() {
 		remoteUserBindingBrook := &syngit.RemoteUserBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBindingBrookName,
-				Namespace: namespace,
+				Namespace: namespace2,
 			},
 			Spec: syngit.RemoteUserBindingSpec{
 				RemoteUserRefs: []corev1.ObjectReference{

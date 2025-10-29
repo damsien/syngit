@@ -34,6 +34,7 @@ var _ = Describe("24 One RemoteTarget scoped by multiple RemoteSyncers", func() 
 	ctx := context.TODO()
 
 	const (
+		namespace           = "test-24"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteSyncerName1   = "remotesyncer-test24.1"
 		remoteSyncerName2   = "remotesyncer-test24.2"

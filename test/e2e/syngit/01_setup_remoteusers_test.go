@@ -31,6 +31,7 @@ import (
 var _ = Describe("01 Create RemoteUser", func() {
 
 	const (
+		namespace           = "test-01"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteUserSanjiName = "remoteuser-sanji"
 	)
@@ -56,6 +57,7 @@ var _ = Describe("01 Create RemoteUser", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 		nnRuLuffy := types.NamespacedName{

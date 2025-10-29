@@ -32,6 +32,7 @@ import (
 var _ = Describe("06 Test objects lifecycle", func() {
 
 	const (
+		namespace                  = "test-06"
 		remoteUserLuffyName        = "remoteuser-luffy-jupyter"
 		remoteUserLuffyJupyterName = "remoteuser-luffy-jupyter"
 		remoteUserLuffySaturnName  = "remoteuser-luffy-saturn"

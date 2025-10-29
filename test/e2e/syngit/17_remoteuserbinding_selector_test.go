@@ -38,6 +38,7 @@ var _ = Describe("17 RemoteUserBinding selector in RemoteSyncer", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace                  = "test-17"
 		remoteSyncerName1          = "remotesyncer-test17.1"
 		remoteSyncerName2          = "remotesyncer-test17.2"
 		remoteSyncerName3          = "remotesyncer-test17.3"
@@ -69,6 +70,7 @@ var _ = Describe("17 RemoteUserBinding selector in RemoteSyncer", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 

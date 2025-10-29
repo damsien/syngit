@@ -31,6 +31,7 @@ import (
 var _ = Describe("15 conversion webhook test", func() {
 
 	const (
+		namespace                  = "test-15"
 		remoteUserLuffyName        = "remoteuser-luffy"
 		remoteUserBindingLuffyName = "remoteuserbinding-luffy"
 		remoteSyncerName           = "remotesyncer-test15"

@@ -38,6 +38,7 @@ var _ = Describe("23 RemoteTarget selector in RemoteSyncer", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace                  = "test-23"
 		remoteSyncerName1          = "remotesyncer-test23.1"
 		remoteSyncerName2          = "remotesyncer-test23.2"
 		remoteSyncerName3          = "remotesyncer-test23.3"

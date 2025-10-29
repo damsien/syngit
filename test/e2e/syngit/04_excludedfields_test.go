@@ -35,6 +35,8 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace1          = "test-04-1"
+		namespace2          = "test-04-2"
 		cmName1             = "test-cm4.1"
 		cmName2             = "test-cm4.2"
 		remoteUserLuffyName = "remoteuser-luffy"
@@ -48,7 +50,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -63,6 +65,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Luffy).CreateOrUpdate(remoteUserLuffy)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -71,7 +74,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -122,7 +125,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName1, Namespace: namespace, Annotations: map[string]string{
+			ObjectMeta: metav1.ObjectMeta{Name: cmName1, Namespace: namespace1, Annotations: map[string]string{
 				annotation1Key: "test",
 				annotation2Key: "test",
 				annotation3Key: "test",
@@ -130,7 +133,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 			Data: map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace1).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
@@ -175,7 +178,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "remoteuser-luffy",
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -199,12 +202,12 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: excludedFieldsConfiMapName, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: excludedFieldsConfiMapName, Namespace: namespace2},
 			Data: map[string]string{
 				"excludedFields": "[\"metadata.uid\", \"metadata.managedFields\", \"metadata.annotations[test-annotation1]\", \"metadata.annotations.[test-annotation2]\"]", //nolint:lll
 			},
 		}
-		_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+		_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace2).Create(ctx,
 			excludedFieldsConfiMap,
 			metav1.CreateOptions{},
 		)
@@ -215,7 +218,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -227,7 +230,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 				DefaultUnauthorizedUserMode: syngit.Block,
 				ExcludedFieldsConfigMapRef: &corev1.ObjectReference{
 					Name:      excludedFieldsConfiMapName,
-					Namespace: namespace,
+					Namespace: namespace2,
 				},
 				Strategy:         syngit.CommitOnly,
 				TargetStrategy:   syngit.OneTarget,
@@ -262,7 +265,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace, Annotations: map[string]string{
+			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace2, Annotations: map[string]string{
 				annotation1Key: "test",
 				annotation2Key: "test",
 				annotation3Key: "test",
@@ -270,7 +273,7 @@ var _ = Describe("04 Create RemoteSyncer with excluded fields", func() {
 			Data: map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace2).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)

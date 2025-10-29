@@ -36,6 +36,7 @@ var _ = Describe("16 Wrong reference or value test", func() {
 	ctx := context.TODO()
 
 	const (
+		namespace                  = "test-16"
 		remoteSyncerName           = "remotesyncer-test16"
 		remoteUserLuffyName        = "remoteuser-luffy"
 		remoteUserChopperName      = "remoteuser-chopper"

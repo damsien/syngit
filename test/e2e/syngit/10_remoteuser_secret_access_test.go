@@ -29,6 +29,8 @@ import (
 var _ = Describe("10 RemoteUser secret permissions checker", func() {
 
 	const (
+		namespace1          = "test-10-1"
+		namespace2          = "test-10-2"
 		remoteUserBrookName = "remoteuser-brook"
 	)
 
@@ -39,7 +41,7 @@ var _ = Describe("10 RemoteUser secret permissions checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace1,
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",
@@ -63,7 +65,7 @@ var _ = Describe("10 RemoteUser secret permissions checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace2,
 			},
 			Spec: syngit.RemoteUserSpec{
 				Email:             "sample@email.com",

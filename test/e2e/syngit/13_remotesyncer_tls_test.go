@@ -36,6 +36,10 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 	ctx := context.TODO()
 
 	const (
+		namespace1          = "test-13-1"
+		namespace2          = "test-13-2"
+		namespace3          = "test-13-3"
+		namespace4          = "test-13-4"
 		cmName1             = "test-cm13.1"
 		cmName2             = "test-cm13.2"
 		cmName3             = "test-cm13.3"
@@ -58,7 +62,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		secretCreds := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretCa1,
-				Namespace: namespace,
+				Namespace: namespace1,
 			},
 			Data: map[string][]byte{
 				"tls.crt": caBundleFile,
@@ -67,10 +71,11 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 			Type: "kubernetes.io/tls",
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().Secrets(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().Secrets(namespace1).Create(ctx,
 				secretCreds,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -79,7 +84,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -102,7 +107,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName2,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -144,14 +149,15 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName2, Namespace: namespace1},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace1).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -169,7 +175,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		By("checking that the configmap is present on the cluster")
 		nnCm := types.NamespacedName{
 			Name:      cmName2,
-			Namespace: namespace,
+			Namespace: namespace1,
 		}
 		getCm := &corev1.ConfigMap{}
 
@@ -186,7 +192,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		secretCreds := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretCa2,
-				Namespace: namespace,
+				Namespace: namespace2,
 			},
 			Data: map[string][]byte{
 				"tls.crt": caBundleFile,
@@ -195,10 +201,11 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 			Type: "kubernetes.io/tls",
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().Secrets(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().Secrets(namespace2).Create(ctx,
 				secretCreds,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -207,7 +214,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -230,7 +237,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName3,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -238,7 +245,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 			Spec: syngit.RemoteSyncerSpec{
 				CABundleSecretRef: corev1.SecretReference{
 					Name:      secretCa2,
-					Namespace: namespace,
+					Namespace: namespace2,
 				},
 				DefaultBranch:               branch,
 				DefaultUnauthorizedUserMode: syngit.Block,
@@ -273,14 +280,15 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName3, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName3, Namespace: namespace2},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace2).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -298,7 +306,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		By("checking that the configmap is present on the cluster")
 		nnCm := types.NamespacedName{
 			Name:      cmName3,
-			Namespace: namespace,
+			Namespace: namespace2,
 		}
 		getCm := &corev1.ConfigMap{}
 
@@ -329,6 +337,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 				secretCreds,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -337,7 +346,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace3,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -360,7 +369,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName4,
-				Namespace: namespace,
+				Namespace: namespace3,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -399,14 +408,15 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName4, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName4, Namespace: namespace3},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace3).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -424,7 +434,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		By("checking that the configmap is present on the cluster")
 		nnCm := types.NamespacedName{
 			Name:      cmName4,
-			Namespace: namespace,
+			Namespace: namespace3,
 		}
 		getCm := &corev1.ConfigMap{}
 
@@ -449,7 +459,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remoteUserLuffy := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserLuffyName,
-				Namespace: namespace,
+				Namespace: namespace4,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -472,7 +482,7 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncerName5,
-				Namespace: namespace,
+				Namespace: namespace4,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -511,14 +521,15 @@ var _ = Describe("13 RemoteSyncer TLS insecure & custom CA bundle test", func() 
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName5, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName5, Namespace: namespace4},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err := sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace4).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
+			fmt.Println(err)
 			return err != nil && strings.Contains(err.Error(), x509ErrorMessage)
 		}, timeout, interval).Should(BeTrue())
 

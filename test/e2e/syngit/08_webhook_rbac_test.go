@@ -34,6 +34,8 @@ import (
 var _ = Describe("08 Webhook rbac checker", func() {
 
 	const (
+		namespace1          = "test-08-1"
+		namespace2          = "test-08-2"
 		remoteUserLuffyName = "remoteuser-luffy"
 		remoteUserBrookName = "remoteuser-brook"
 		remoteSyncer1Name   = "remotesyncer-test8.1"
@@ -51,7 +53,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -66,6 +68,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		}
 		Eventually(func() bool {
 			err := sClient.As(Brook).CreateOrUpdate(remoteUserBrook)
+			fmt.Println(err)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
 
@@ -74,7 +77,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncer1Name,
-				Namespace: namespace,
+				Namespace: namespace1,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -113,11 +116,11 @@ var _ = Describe("08 Webhook rbac checker", func() {
 				Kind:       "ConfigMap",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace1},
 			Data:       map[string]string{"test": "oui"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace).Create(ctx,
+			_, err = sClient.KAs(Luffy).CoreV1().ConfigMaps(namespace1).Create(ctx,
 				cm,
 				metav1.CreateOptions{},
 			)
@@ -139,7 +142,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		Wait3()
 		nnCm := types.NamespacedName{
 			Name:      cmName,
-			Namespace: namespace,
+			Namespace: namespace1,
 		}
 		getCm := &corev1.ConfigMap{}
 
@@ -157,7 +160,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		remoteUserBrook := &syngit.RemoteUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteUserBrookName,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RubAnnotationKeyManaged: "true",
 				},
@@ -180,7 +183,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		remotesyncer := &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncer2Name,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -218,7 +221,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		remotesyncer = &syngit.RemoteSyncer{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      remoteSyncer2Name,
-				Namespace: namespace,
+				Namespace: namespace2,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: branch,
 				},
@@ -258,11 +261,11 @@ var _ = Describe("08 Webhook rbac checker", func() {
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: namespace2},
 			StringData: map[string]string{"test": "test1"},
 		}
 		Eventually(func() bool {
-			_, err = sClient.KAs(Brook).CoreV1().Secrets(namespace).Create(ctx,
+			_, err = sClient.KAs(Brook).CoreV1().Secrets(namespace2).Create(ctx,
 				secret,
 				metav1.CreateOptions{},
 			)
@@ -283,7 +286,7 @@ var _ = Describe("08 Webhook rbac checker", func() {
 		By("checking that the secret is present on the cluster")
 		nnSecret := types.NamespacedName{
 			Name:      secretName,
-			Namespace: namespace,
+			Namespace: namespace2,
 		}
 		getSecret := &corev1.Secret{}
 

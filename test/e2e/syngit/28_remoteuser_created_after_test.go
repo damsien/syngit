@@ -35,6 +35,7 @@ var _ = Describe("28 RemoteUser created after RemoteSyncer & RemoteTargets", fun
 	ctx := context.TODO()
 
 	const (
+		namespace                  = "test-28"
 		remoteUserLuffyName        = "remoteuser-luffy"
 		remoteUserBindingLuffyName = "remoteuserbinding-luffy"
 		remoteSyncerName           = "remotesyncer-test28"
