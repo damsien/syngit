@@ -17,10 +17,8 @@ limitations under the License.
 package e2e_syngit
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"net"
@@ -484,7 +482,7 @@ func isGiteaInstalled() bool {
 	return err == nil
 }
 
-var _ = SynchronizedBeforeSuite(func() []byte {
+var _ = BeforeSuite(func() {
 	log.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	if setupType == "full" {
@@ -506,42 +504,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 	fmt.Printf("  Gitea URL for %s: %s\n", os.Getenv("PLATFORM2"), gitP2Fqdn)
 
-	data := struct {
-		GitP1Fqdn string
-		GitP2Fqdn string
-		Cfg       rest.Config
-	}{
-		GitP1Fqdn: gitP1Fqdn,
-		GitP2Fqdn: gitP2Fqdn,
-		Cfg:       *cfg,
-	}
-
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(data)
-	Expect(err).NotTo(HaveOccurred())
-
-	return buf.Bytes()
-}, func(data []byte) {
-	ctx := context.TODO()
-
-	var sharedData struct {
-		GitP1Fqdn string
-		GitP2Fqdn string
-		Cfg       rest.Config
-	}
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&sharedData)
-	Expect(err).NotTo(HaveOccurred())
-
-	gitP1Fqdn = sharedData.GitP1Fqdn
-	gitP2Fqdn = sharedData.GitP2Fqdn
-	restConfig := sharedData.Cfg
-
 	By("setting the default client successfully")
 	sClient = &SyngitTestUsersClientset{}
-	err = sClient.Initialize(&restConfig)
+	err = sClient.Initialize(cfg)
+
+	ctx := context.Background()
 
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	namespaceSetup(ctx)
@@ -587,7 +554,7 @@ func deleteRepos() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-var _ = SynchronizedAfterSuite(func() {}, func() {
+var _ = AfterSuite(func() {
 	ctx := context.TODO()
 
 	deleteRbac(ctx)
