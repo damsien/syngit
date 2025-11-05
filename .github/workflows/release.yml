@@ -44,7 +44,7 @@ jobs:
           
       - name: Package chart
         run: |
-          helm package charts/${{ github.ref_name }} -d .cr-release-packages
+          helm package charts/${{ github.ref_name }}
 
       - name: Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 #v2.4.1
@@ -53,32 +53,24 @@ jobs:
           generate_release_notes: true
           append_body: true
           tag_name: ${{ github.ref_name }}
-          files: .cr-release-packages/*.tgz
+          files: "*.tgz"
       
-      - name: Update Helm index
+      - name: Upload chart package and update Helm index
         run: |
-          # Checkout gh-pages branch
-          git config user.name "$GITHUB_ACTOR"
-          
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+          git stash
           git checkout gh-pages
-          git pull
-          
-          cp .cr-release-packages/*.tgz .
-          git add *.tgz
-          git commit -m "Add chart packages"
-          git push
-          
-          # Download chart-releaser
-          curl -sSL https://github.com/helm/chart-releaser/releases/download/v1.8.1/chart-releaser_1.8.1_linux_amd64.tar.gz | tar xz
-          
-          # Generate/update index
-          ./cr index \
-            --owner ${{ github.repository_owner }} \
-            --git-repo ${{ github.event.repository.name }} \
-            --package-path .cr-release-packages \
-            --pages-branch gh-pages
-            --index-path . \
-            --release-name-template="v{{ .Version }}"
-            --push
+
+          if [ -f index.yaml ]; then
+            helm repo index . --url https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }} --merge index.yaml
+          else
+            helm repo index . --url https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+          fi
+
+          git add index.yaml
+          git commit -m "feat(release): Update Helm index for the ${CHART_VERSION} version" || echo "No changes to commit"
+          git push origin gh-pages
         env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
