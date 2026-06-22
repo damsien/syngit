@@ -3,9 +3,9 @@ entries:
   syngit:
   - apiVersion: v2
     appVersion: v0.7.0
-    created: "2026-06-19T21:04:53.786118225Z"
+    created: "2026-06-22T15:52:02.866450122Z"
     description: An operator to push resources to git
-    digest: a41539c72eccb75c6263a5015061a28807fe81e36121e82d6814581a179df936
+    digest: 1ee73b12ada89978505b76413093050f41a910ffb76ed2813afab9941dff1a52
     home: https://github.com/syngit-org/syngit
     icon: https://raw.githubusercontent.com/syngit-org/syngit/main/img/mini-icon.png
     maintainers:
@@ -14,7 +14,7 @@ entries:
     name: syngit
     type: application
     urls:
-    - https://github.com/damsien/syngit/releases/download/v0.8.0/syngit-v0.7.0.tgz
+    - https://github.com/damsien/syngit/releases/download/v0.8.1/syngit-v0.7.0.tgz
     version: v0.7.0
   - apiVersion: v2
     appVersion: v0.5.0
@@ -397,4 +397,4 @@ entries:
     urls:
     - https://github.com/damsien/syngit/releases/download/syngit-0.0.1/syngit-0.0.1.tgz
     version: 0.0.1
-generated: "2026-06-19T21:04:53.78504141Z"
+generated: "2026-06-22T15:52:02.865402977Z"
