@@ -1,18 +1,35 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/loader"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/kube"
 	"k8s.io/client-go/rest"
 )
+
+// GetLocalChartVersion loads the chart metadata at chartPath and returns its
+// version (e.g. "v0.8.0"). It is used to pin the upgrade baseline to the
+// previous published release (strictly below the working-tree version).
+func GetLocalChartVersion(chartPath string) (string, error) {
+	loaded, err := loader.Load(chartPath)
+	if err != nil {
+		return "", err
+	}
+	c, ok := loaded.(*chartv2.Chart)
+	if !ok || c.Metadata == nil {
+		return "", fmt.Errorf("unable to read chart metadata at %s", chartPath)
+	}
+	return c.Metadata.Version, nil
+}
 
 func NewDefaultHelmActionConfig(chart Chart) (*action.Configuration, *cli.EnvSettings, error) {
 	settings := cli.New()
@@ -122,6 +139,11 @@ func InstallChart(chart Chart, actionConfig *action.Configuration, settings *cli
 	remote, ok := chart.(RemoteChart)
 	if ok {
 		install.RepoURL = remote.RepoURL
+		// For remote charts, ChartVersion carries an optional semver selector
+		// (an exact version or a constraint such as "< 0.8.0"). When set, the
+		// repo index resolves the newest published version matching it; when
+		// empty, the latest published version is used.
+		install.Version = remote.GetChartVersion()
 		remote.InstallAction = install
 		chart = remote
 	}

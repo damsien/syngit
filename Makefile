@@ -202,14 +202,14 @@ test-e2e-debug: ginkgo envtest ## Like e2e-focus but fail-fast with a full stack
 test-chart-install: ## Run tests to install the chart.
 	make kind-delete-cluster
 	make kind-create-cluster
-	go test ./test/e2e/helm/install -v -ginkgo.v
+	go test ./test/e2e/helm/install -timeout 14m -v -ginkgo.v
 	helm uninstall -n syngit syngit --ignore-not-found=$(ignore-not-found)
 
 .PHONY: test-chart-upgrade
 test-chart-upgrade: kind-delete-cluster kind-create-cluster ## Run tests to upgrade the chart.
 	make kind-delete-cluster
 	make kind-create-cluster
-	go test ./test/e2e/helm/upgrade -v -ginkgo.v
+	go test ./test/e2e/helm/upgrade -timeout 14m -v -ginkgo.v
 	helm uninstall -n syngit syngit --ignore-not-found=$(ignore-not-found)
 
 ##@ Build

@@ -19,6 +19,7 @@ package e2e_build
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -66,6 +67,15 @@ var _ = BeforeEach(func() {
 			ChartVersion:     "syngit",
 		},
 	}
+
+	// Pin the upstream baseline to the latest published release strictly below
+	// the working-tree version. This avoids picking up the chart just published
+	// by the concurrent release job (whose versioned image isn't pushed yet),
+	// while keeping a real previous-release -> working-tree upgrade.
+	By("pinning the upstream baseline to the previous published release")
+	localVersion, err := utils.GetLocalChartVersion(localChart.ChartPath + "/" + localChart.ChartVersion)
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
+	upstreamChart.ChartVersion = "< " + strings.TrimPrefix(localVersion, "v")
 
 	By("getting the latest API version")
 	version, err := utils.GetLatestAPIVersion()
