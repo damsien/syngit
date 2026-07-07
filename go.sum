@@ -100,6 +100,8 @@ github.com/fluxcd/helm-controller/api v1.6.0 h1:s0IZ+pA9IyyWc6E6DzOJPvQqunmnqU3W
 github.com/fluxcd/helm-controller/api v1.6.0/go.mod h1:oKuRQYGJVS87HLybfpgYbu1X1anigFpRsVLLjPXufTA=
 github.com/fluxcd/helm-controller/api v1.6.1 h1:h48BXjp/hvN8pIst5KfU++3oyLlO2OpigXfclSj7NW4=
 github.com/fluxcd/helm-controller/api v1.6.1/go.mod h1:CaI5bHedusLcXYj1+pkd4RkSE8TtiEHI3ReHNsUySbg=
+github.com/fluxcd/helm-controller/api v1.6.2 h1:oH3kXfiSVDKB5Mmh7tF4ywC2yK1Ui7enjt7GKWJbTxM=
+github.com/fluxcd/helm-controller/api v1.6.2/go.mod h1:CaI5bHedusLcXYj1+pkd4RkSE8TtiEHI3ReHNsUySbg=
 github.com/fluxcd/pkg/apis/kustomize v1.19.0 h1:DKiRUwS/8HaePXUF+JUShbBe/HAClnJwm2tdiUnPMiY=
 github.com/fluxcd/pkg/apis/kustomize v1.19.0/go.mod h1:BYPKRhf3MQKPtSsaNcOs44BigF0q8Fzza5iuOHTd26U=
 github.com/fluxcd/pkg/apis/kustomize v1.19.1 h1:rmN3hTceBVABGbrqRXEDYoAJDBUIPFRO9zbDJ98Xt/o=
