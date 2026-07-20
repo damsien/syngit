@@ -155,7 +155,7 @@ func upstreamBasedPullFastForward(
 			plumbing.HEAD,
 			targetBranch,
 			params.GitUserInfo.User,
-			params.GitUserInfo.Token,
+			params.GitUserInfo.Email,
 		)
 		return nil, fmt.Errorf(
 			"failed to pull remote: %v\nVerbose output: %s\nVariables: %s",
@@ -185,7 +185,7 @@ func upstreamBasedPullFastForward(
 			plumbing.HEAD,
 			targetBranch,
 			params.GitUserInfo.User,
-			params.GitUserInfo.Token,
+			params.GitUserInfo.Email,
 		)
 		return nil, fmt.Errorf(
 			"failed to pull target remote: %v\nVerbose output: %s\nVariables: %s",
@@ -325,7 +325,7 @@ func fetchUpstream(params interceptor.GitPipelineParams, targetRepository *git.R
 		variables := fmt.Sprintf("\nRepository: %s\nUsername: %s\nEmail: %s\n",
 			upstreamURL,
 			params.GitUserInfo.User,
-			params.GitUserInfo.Token,
+			params.GitUserInfo.Email,
 		)
 		return fmt.Errorf("failed to fetch remote: %v\nVerbose output: %s\nVariables: %s", err, verboseOutput.String(), variables)
 	}
