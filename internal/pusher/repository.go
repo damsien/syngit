@@ -96,7 +96,7 @@ func cloneRepository(params GetRepositoryParams) (*git.Repository, error) {
 			params.Repository,
 			plumbing.ReferenceName(params.Branch),
 			params.GitUserInfo.User,
-			params.GitUserInfo.Token,
+			params.GitUserInfo.Email,
 		)
 		return nil, fmt.Errorf(
 			"failed to clone repository: %v\nVerbose output: %s\nVariables: %s",
