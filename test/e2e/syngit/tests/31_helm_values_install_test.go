@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	provider "github.com/syngit-org/syngit-provider-helm/pkg"
 	"github.com/syngit-org/syngit/internal/mutator"
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta4"
 	utils "github.com/syngit-org/syngit/test/e2e/syngit/utils"
@@ -49,6 +50,7 @@ var _ = Describe("31 HelmValuesMutation install commits the values file", func()
 				Namespace: fx.Namespace,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: "main",
+					provider.HelmValuesAnnotation:           "enabled",
 				},
 			},
 			Spec: syngit.RemoteSyncerSpec{
@@ -153,6 +155,7 @@ var _ = Describe("31 HelmValuesMutation install commits the values file", func()
 				Namespace: fx.Namespace,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: "main",
+					provider.HelmValuesAnnotation:           "enabled",
 				},
 			},
 			Spec: syngit.RemoteSyncerSpec{
@@ -250,6 +253,7 @@ var _ = Describe("31 HelmValuesMutation install commits the values file", func()
 				Namespace: fx.Namespace,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: "main",
+					provider.HelmValuesAnnotation:           "enabled",
 				},
 			},
 			Spec: syngit.RemoteSyncerSpec{

@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/memory"
+	provider "github.com/syngit-org/syngit-provider-flux/pkg"
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta4"
 	"github.com/syngit-org/syngit/pkg/interceptor"
 	"github.com/syngit-org/syngit/pkg/utils"
@@ -107,6 +108,11 @@ func helmReleaseSecretYAML(t *testing.T) string {
 func helmReleaseParams(t *testing.T) interceptor.GitPipelineParams {
 	return interceptor.GitPipelineParams{
 		RemoteSyncer: syngit.RemoteSyncer{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					provider.HelmReleaseAnnotation: "enabled",
+				},
+			},
 			Spec: syngit.RemoteSyncerSpec{
 				// Server-managed fields that must not leak into the git manifest.
 				ExcludedFields: []string{

@@ -44,7 +44,8 @@ type FluxHelmReleaseProvider struct{}
 
 // Handles matches Helm release Secrets, mirroring HelmValuesMutation.Handles.
 func (FluxHelmReleaseProvider) Handles(params interceptor.GitPipelineParams) bool {
-	if params.InterceptedGVR.Group != "" ||
+	if params.RemoteSyncer.Annotations[fluxprovider.HelmReleaseAnnotation] != "enabled" ||
+		params.InterceptedGVR.Group != "" ||
 		params.InterceptedGVR.Version != "v1" ||
 		params.InterceptedGVR.Resource != "secrets" {
 		return false

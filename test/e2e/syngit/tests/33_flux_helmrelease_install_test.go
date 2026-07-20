@@ -19,6 +19,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	fluxprovider "github.com/syngit-org/syngit-provider-flux/pkg"
+	helmprovider "github.com/syngit-org/syngit-provider-helm/pkg"
 	"github.com/syngit-org/syngit/internal/mutator"
 	syngit "github.com/syngit-org/syngit/pkg/api/v1beta4"
 	utils "github.com/syngit-org/syngit/test/e2e/syngit/utils"
@@ -44,6 +46,8 @@ var _ = Describe("33 FluxHelmRelease install synthesizes a HelmRelease", func() 
 				Namespace: fx.Namespace,
 				Annotations: map[string]string{
 					syngit.RtAnnotationKeyOneOrManyBranches: "main",
+					fluxprovider.HelmReleaseAnnotation:      "enabled",
+					helmprovider.HelmValuesAnnotation:       "enabled",
 				},
 			},
 			Spec: syngit.RemoteSyncerSpec{
