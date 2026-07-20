@@ -20,7 +20,7 @@ func Push(params interceptor.GitPipelineParams, targetRepository *git.Repository
 		params.RemoteSyncer.Spec.RemoteRepository,
 		plumbing.ReferenceName(targetBranch),
 		params.GitUserInfo.User,
-		params.GitUserInfo.Token,
+		params.GitUserInfo.Email,
 	)
 	var verboseOutput bytes.Buffer
 	pushOptions := &git.PushOptions{

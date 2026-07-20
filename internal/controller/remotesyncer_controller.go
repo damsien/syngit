@@ -180,6 +180,7 @@ func (r *RemoteSyncerReconciler) reconcileWebhook(ctx context.Context, req ctrl.
 		NamespaceSelector: &v1.LabelSelector{
 			MatchLabels: map[string]string{"kubernetes.io/metadata.name": rSNamespace},
 		},
+		ObjectSelector: remoteSyncer.Spec.ScopedResources.ObjectSelector,
 	}
 	webhookConf := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
